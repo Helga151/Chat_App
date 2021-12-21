@@ -1,0 +1,3 @@
+rejestrowanie użytkownika - typ 20 (na serwerze)
+serwer 1 - typ 100
+kolejka tymczasowa, do stworzenia kolejki po stronie serwera przy rejestracji użytkownika - typ 12345678
