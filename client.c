@@ -120,7 +120,6 @@ int main(int argc, char* argv[]) {
     if(user.ulog == 0) {
         CheckIfUnique();
         printf("Twoj login to %s a identyfikator %ld\n", user.uname, user.uid);
-        getchar();
         user.ulog = 1;
         queue = msgget(user.uid, 0644 | IPC_CREAT); //create queue for this client
 
