@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <time.h>
+#include <ctype.h>
 
 struct Message {
     long mtype;
@@ -137,6 +138,14 @@ int Register() {
     //printf("%d\n", queue);
 }
 
+int ReadNumber() {
+    int choice;      
+    while (scanf("%d", &choice) != 1) {
+        scanf("%*s");
+    }
+    return choice;
+} 
+
 int main(int argc, char* argv[]) {
     printf("--CZAT by Olga Gerlich and Pawel Marczewski--\n");
     printf("Hi!\n");
@@ -154,28 +163,20 @@ int main(int argc, char* argv[]) {
     while(1) {
         ReceiveMessage(queue);
         PrintOptions();
-        int choice;
-        char nptr[1024];
-        char *errptr;
-        do {
-            fgets(nptr, sizeof nptr, stdin);
-            choice = strtol(nptr, &errptr, 10);
-        } while ((*errptr != '\n' && *errptr != '\0') || choice < 1 || choice > 5);
         printf("\n");
         ReceiveMessage(queue);
-        switch (choice) {
+        switch (ReadNumber()) {
             case 1: { //sending message to room
                 printf("Send private (1) or public (2) message\n");
-                int type;
-                do {
-                    fgets(nptr, sizeof nptr, stdin);
-                    type = strtol(nptr, &errptr, 10);
-                } while ((*errptr != '\n' && *errptr != '\0') || type != 1 || type != 2);
-        
+                int type = ReadNumber();                
                 if(type == 1) {
                     printf("Whom to send?: ");
                     char recipient[100];
                     scanf("%s", recipient);
+                    while(strcmp(recipient, user.uname) == 0) {
+                        printf("You can not send a message to yourself\n");
+                        scanf("%s", recipient);
+                    }
                     strcpy(mes.mto, recipient);
                 }
                 else if(type == 2) strcpy(mes.mto, "server");
@@ -194,7 +195,13 @@ int main(int argc, char* argv[]) {
                 mes.mid = user.uid;
                 strcpy(mes.mfrom, user.uname);
                 msgsnd(queue, &mes, (sizeof(mes) - sizeof(long)), 0);
-                //PrintPressKey();
+                msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
+                if(strcmp(mes.mtext, "none") == 0) {
+                    printf("Written recipent does not exist\n");
+                }
+                else {
+                    printf("Message sent\n");
+                }
                 break;
             } 
             case 2: { //writing 10 last messages
@@ -214,30 +221,6 @@ int main(int argc, char* argv[]) {
                 //break;
             }
         }
-
-
-        //---READ A MESSAGE---
-        /*if(choice == 1) {
-            printf("Napisz wiadomosc: ");
-            char text[100];
-            scanf("%s", text);
-            
-            /*ZAPYTAc CZEMU NIE POBIERA WIADOMOsCI
-            fgets(text, sizeof(text), stdin); //one line with spaces
-            scanf("%[^\n]%*c", text); 
-
-            strcpy(mes.mtext, text);
-            msgsnd(queue, &mes, sizeof(mes), 0);
-        }
-        else if(choice == 4) {
-            strcpy(mes.mtext, "write");
-            msgsnd(queue, &mes, sizeof(mes), 0);
-        }
-        else if(choice == 5) {
-            strcpy(mes.mtext, "end");
-            msgsnd(queue, &mes, sizeof(mes), 0);
-            break;
-        }*/
     }
 
     return 0;

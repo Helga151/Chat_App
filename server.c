@@ -88,13 +88,23 @@ void SendMessage(int current_queue, int* arr_queue, int clients_all, User *arr_u
         else {
             //private - send the message to one, particular user
             //find this user 
+            int zm = 0;
             for(int i = 0; i < clients_all; i++) {
                 if(arr_queue[i] != 0 && arr_users[i].ulog == 1 && strcmp(arr_users[i].uname, mes.mto) == 0) {
                     mes.mtype = server_type;
                     msgsnd(arr_queue[i], &mes, (sizeof(mes) - sizeof(long)), 0);
                     printf("poszlo\n");
+                    zm = 1;
+                    break;
                 }
             }
+            if(zm == 0) {
+                //send feedback to client that written recipent does not exist
+                mes.mtype = server_type;
+                strcpy(mes.mtext, "none");
+                printf("nie ma takiego uzytkownika\n");
+            }
+            msgsnd(current_queue, &mes, (sizeof(mes) - sizeof(long)), 0);
         }
     }
 }
@@ -161,16 +171,6 @@ int main(int argc, char* argv[]) {
                 break; //no more clients to check
             }
         }
-    }
-    /*int chat = open("chat.txt", O_RDWR | O_CREAT | O_APPEND, S_IRWXU);
-    while (1)
-    {
-        int queue = msgget(1000, 0666 | IPC_CREAT);
-        msgrcv(queue, &mes, sizeof(mes), 10, 0);
-
-        //strcmp: 0 - same, < 0 - first smaller, > 0 -first greater
-        if(strcmp(mes.mtext, "end") == 0) break; //"end" ends server from executing
-
     }
     //delete all temp files after server stops*/
     return 0;
