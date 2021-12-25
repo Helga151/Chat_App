@@ -10,7 +10,6 @@
 #include <fcntl.h>
 #include <time.h>
 
-typedef struct Message Message;
 struct Message {
     long mtype;
     char mtext[1000];
@@ -27,18 +26,11 @@ struct User {
 }user;
 long server_type = 100;
 
-Message SendAndReceive(int queue, Message mes_to, int wanted_type) {
-    msgsnd(queue, &mes_to, (sizeof(mes_to) - sizeof(long)), 0);
-    Message mes_from;
-    msgrcv(queue, &mes_from, (sizeof(mes_from) - sizeof(long)), wanted_type, 0);
-    return mes_from;
-}
-
 void CheckIfUnique() { //is written name unique
     int unique = 1; //0 - unique
     int names_file = open("names_file.txt", O_RDWR | O_CREAT, 0644);
     if(names_file < 0) {
-        printf("Błąd otwarcia pliku\n");
+        printf("Could not open the file\n");
         return;
     }
     char name[100];
@@ -80,27 +72,19 @@ void CheckIfUnique() { //is written name unique
     close(names_file);  
 }
 
-void LogIn() { //type 1
-
-}
-
-void LogOut() {
-
-}
 
 void PrintOptions() {
     printf("---------------------------\n");
-    printf("2. Wyloguj uzytkownika - zamknij program\n"); //usunięcie nazwy użytkownika z pliku i zamknęcie programu
+    printf("1. Send a message\n");
+    printf("2. Show 10 last public messages from current room\n");
+    /*printf("2. Wyloguj uzytkownika - zamknij program\n"); //usunięcie nazwy użytkownika z pliku i zamknęcie programu
     //dodanie do struktury argumentu mówiącego o grupach w których jestem
     printf("3. Zapisz uzytkownika do pokoju\n"); //dopisanie nazwy użytkownika i pidu do pliku danego serwera
     printf("4. Wypisz uzytkownika z pokoju\n");
     printf("5. Wyswietl liste zalogowanych uzytkownikow\n"); //zapytać czy można usunąć
     printf("6. Wyswietl liste zarejestrowanych kanalow\n"); //jakie serwery
-    printf("7. Wyswietl liste uzytkownikow zapisanych do pokoi\n"); //dodatkowe pytanie: z jakich pokoi
-    printf("2. Wyswietl max 10 ostatnich wiadomosci wyslanych na wskazanym kanale\n");
-    printf("1. Wyslij wiadomosc na wskazany kanal\n");
-    printf("10. Wyslij wiadomosc prywatna do danego uzytkownika\n");
-    printf("Podaj numer czynnosci -> ");
+    printf("7. Wyswietl liste uzytkownikow zapisanych do pokoi\n");*/ //dodatkowe pytanie: z jakich pokoi
+    printf("Type task number -> ");
 }
 
 void PrintPressKey() {
@@ -112,36 +96,94 @@ void PrintPressKey() {
     }
 }
 
+void ReceiveMessage(int queue) {
+    int rcv = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, IPC_NOWAIT);
+    if(rcv > 0) {
+        if(strcmp(mes.mto, "server") == 0){ //public message
+            if(strcmp(mes.mfrom, user.uname) != 0) {
+                printf("New public message from %s: %s \n", mes.mfrom, mes.mtext);
+                PrintPressKey();
+            }
+        }
+        /*printf("Previous message was succesfully sent.\n");
+        printf("If you do not see it on other client, please continue reading printed instructions\n");
+        printf("Message will be shown after finishing current tasks\n");*/
+        else { //private message
+            printf("New private message from %s: %s \n", mes.mfrom, mes.mtext);
+            PrintPressKey();
+        }
+    }
+}
+
+int Register() {
+    int temp_q = msgget(12345678, 0644 | IPC_CREAT); //create temporary queue to send id to the server, typ logowania - 20
+    CheckIfUnique();
+    mes.mtype = 20;
+    strcpy(mes.mfrom, user.uname);
+    mes.mid = user.uid;
+    strcpy(mes.mtext, "udane");
+    msgsnd(temp_q, &mes, (sizeof(mes) - sizeof(long)), 0);
+    msgrcv(temp_q, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
+    if(strcmp(mes.mtext, "failed") == 0) {
+        printf("No empty slots left!\n");
+        printf("App is closing\n");
+        PrintPressKey();
+        return 0;
+    }
+    printf("Twoj login to %s a identyfikator %ld\n", user.uname, user.uid);
+    user.ulog = 1;
+    int queue = msgget(user.uid, 0644 | IPC_CREAT); //create queue for this client
+    return queue;
+    //printf("%d\n", queue);
+}
+
 int main(int argc, char* argv[]) {
-    printf("--CZAT by Olga Gerlich--\n");
-    printf("Czesc!\n");
+    printf("--CZAT by Olga Gerlich and Pawel Marczewski--\n");
+    printf("Hi!\n");
     user.ulog = 0;
     int queue;
     if(user.ulog == 0) {
-        CheckIfUnique();
-        printf("Twoj login to %s a identyfikator %ld\n", user.uname, user.uid);
-        user.ulog = 1;
-        queue = msgget(user.uid, 0644 | IPC_CREAT); //create queue for this client
-
-        int temp_q = msgget(12345678, 0644 | IPC_CREAT); //create temporary queue to send id to the server, typ logowania - 20
-        mes.mtype = 20;
-        strcpy(mes.mfrom, user.uname);
-        mes.mid = user.uid;
-        strcpy(mes.mtext, "udane");
-        msgsnd(temp_q, &mes, (sizeof(mes) - sizeof(long)), 0);
+        queue = Register();
+        if(queue == 0) return 0;
+        printf("%s %ld %ld\n", mes.mtext, mes.mid, user.uid);
     }
     else {
         printf("Użytkownik już jest zalogowany\n");
     }
     PrintPressKey();
     while(1) {
+        ReceiveMessage(queue);
         PrintOptions();
         int choice;
-        scanf("%d", &choice);
+        char nptr[1024];
+        char *errptr;
+        do {
+            fgets(nptr, sizeof nptr, stdin);
+            choice = strtol(nptr, &errptr, 10);
+        } while ((*errptr != '\n' && *errptr != '\0') || choice < 1 || choice > 5);
         printf("\n");
-
+        ReceiveMessage(queue);
         switch (choice) {
             case 1: { //sending message to room
+                printf("Send private (1) or public (2) message\n");
+                int type;
+                do {
+                    fgets(nptr, sizeof nptr, stdin);
+                    type = strtol(nptr, &errptr, 10);
+                } while ((*errptr != '\n' && *errptr != '\0') || type != 1 || type != 2);
+        
+                if(type == 1) {
+                    printf("Whom to send?: ");
+                    char recipient[100];
+                    scanf("%s", recipient);
+                    strcpy(mes.mto, recipient);
+                }
+                else if(type == 2) strcpy(mes.mto, "server");
+                else {
+                    printf("This option does not exits\n");
+                    PrintPressKey();
+                    break;
+                }
                 printf("Napisz wiadomosc: ");
                 char text[1000];
                 getchar();
@@ -151,8 +193,8 @@ int main(int argc, char* argv[]) {
                 mes.mtype = 1;
                 mes.mid = user.uid;
                 strcpy(mes.mfrom, user.uname);
-                //mes.mto = 1; //1 - server key
                 msgsnd(queue, &mes, (sizeof(mes) - sizeof(long)), 0);
+                //PrintPressKey();
                 break;
             } 
             case 2: { //writing 10 last messages
@@ -167,39 +209,9 @@ int main(int argc, char* argv[]) {
                 PrintPressKey();
                 break;
             } 
-            case 3: {
-
-            } 
-            case 4: {
-
-            } 
-            case 5: {
-
-            } 
-            case 6: {
-
-            } 
-            case 7: {
-
-            }     
-            case 8: {
-
-            } 
-            case 9: {
-
-            } 
-            case 10: {
-
-            } 
-            case 11: {
-
-            } 
-            case 12: {
-
-            } 
             default: {
                 printf("Podana opcja nie istnieje!\n");
-                break;
+                //break;
             }
         }
 
