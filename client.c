@@ -39,11 +39,10 @@ void CheckIfUnique() { //is written name unique
         unique = 0;
         printf("Podaj nazwe uzytkownika (bez spacji): ");
         scanf("%s", name);
-        char letter;
-        char arr[100];
+        char letter, arr[100];
         int i = 0;
         while(read(names_file, &letter, 1) > 0) {
-            if(letter == ' ') {
+            if(letter == '_') {
                 if(strcmp(arr, name) == 0) {
                     printf("Uzytkownik o nazwie '%s' juz istnieje\n", name);
                     unique = 1;
@@ -55,8 +54,7 @@ void CheckIfUnique() { //is written name unique
                 i = 0;
             }
             else {
-                arr[i] = letter;
-                i++;
+                arr[i++] = letter;
             }
         }
     }
@@ -67,7 +65,7 @@ void CheckIfUnique() { //is written name unique
     sprintf(pid, "%ld", user.uid);
 
     write(names_file, user.uname, strlen(user.uname));
-    write(names_file, " ", 1);
+    write(names_file, "_", 1);
     write(names_file, pid, strlen(pid));
     write(names_file, "\n", 1);
     close(names_file);  
@@ -78,9 +76,9 @@ void PrintOptions() {
     printf("---------------------------\n");
     printf("1. Send a message\n");
     printf("2. Show 10 last public messages from current room\n");
-    /*printf("2. Wyloguj uzytkownika - zamknij program\n"); //usunięcie nazwy użytkownika z pliku i zamknęcie programu
+    printf("3. Wyloguj uzytkownika - zamknij program\n"); //usunięcie nazwy użytkownika z pliku i zamknęcie programu
     //dodanie do struktury argumentu mówiącego o grupach w których jestem
-    printf("3. Zapisz uzytkownika do pokoju\n"); //dopisanie nazwy użytkownika i pidu do pliku danego serwera
+    /*printf("3. Zapisz uzytkownika do pokoju\n"); //dopisanie nazwy użytkownika i pidu do pliku danego serwera
     printf("4. Wypisz uzytkownika z pokoju\n");
     printf("5. Wyswietl liste zalogowanych uzytkownikow\n"); //zapytać czy można usunąć
     printf("6. Wyswietl liste zarejestrowanych kanalow\n"); //jakie serwery
@@ -214,6 +212,20 @@ int main(int argc, char* argv[]) {
                 }
                 else printf("An error has occurred!\n");
                 PrintPressKey();
+                break;
+            } 
+            case 3: { //wyloguj
+                mes.mtype = 3;
+                msgsnd(queue, &mes, (sizeof(mes) - sizeof(long)), 0);
+                int receive = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
+                if(receive > 0) {
+                    printf("Wylogowano\n");
+                    printf("%s\n", mes.mtext); 
+                    return 0;
+                }
+                else printf("An error has occurred!\n");
+                PrintPressKey();
+                return 0;
                 break;
             } 
             default: {
