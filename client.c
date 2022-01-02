@@ -1,3 +1,4 @@
+#include "lib/struct.h"
 #include <sys/wait.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -11,26 +12,12 @@
 #include <time.h>
 #include <ctype.h>
 
-struct Message {
-    long mtype;
-    char mtext[1000];
-    char mfrom[100]; //who sends the message
-    long mid; //id of sender
-    char mto[100]; //who should receive the message
-    time_t msec; //when the message was sent, in seconds
-}mes;
-
-struct User {
-    long uid; //unique id - pid
-    char uname[100];
-    int ulog; //is user logged in: 0 - no, 1 - yes
-    char uroom[100]; //room to which user belongs
-}user;
-long server_type = 100;
+Message mes;
+User user;
 
 void ReadUsername() { //check if written name is unique
     int unique = 1; //0 - unique
-    int names_file = open("names_file.txt", O_RDWR | O_CREAT, 0644);
+    int names_file = open("txt/names_file", O_RDWR | O_CREAT, 0644);
     if(names_file < 0) {
         printf("Could not open the file\n");
         return;

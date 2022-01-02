@@ -2,6 +2,10 @@
     "C_Cpp.errorSquiggles": "Disabled",
     "files.associations": {
         "stdlib.h": "c",
-        "types.h": "c"
+        "types.h": "c",
+        "olga.h": "c",
+        "wait.h": "c",
+        "stdio.h": "c",
+        "msg.h": "c"
     }
 }
