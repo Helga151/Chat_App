@@ -24,10 +24,11 @@ struct User {
     long uid; //unique id - pid
     char uname[100];
     int ulog; //is user logged in: 0 - no, 1 - yes
+    char uroom[100]; //room to which user belongs
 }user;
 long server_type = 100;
 
-void CheckIfUnique() { //is written name unique
+void ReadUsername() { //check if written name is unique
     int unique = 1; //0 - unique
     int names_file = open("names_file.txt", O_RDWR | O_CREAT, 0644);
     if(names_file < 0) {
@@ -37,7 +38,7 @@ void CheckIfUnique() { //is written name unique
     char name[100];
     while(unique == 1) { //read client name untill it is unique
         unique = 0;
-        printf("Podaj nazwe uzytkownika (bez spacji): ");
+        printf("Enter your username (without spaces): ");
         scanf("%s", name);
         char letter;
         char arr[100];
@@ -45,7 +46,7 @@ void CheckIfUnique() { //is written name unique
         while(read(names_file, &letter, 1) > 0) {
             if(letter == ' ') {
                 if(strcmp(arr, name) == 0) {
-                    printf("Uzytkownik o nazwie '%s' juz istnieje\n", name);
+                    printf("Client with this username '%s' exists\n", name);
                     unique = 1;
                     break;
                 }
@@ -73,6 +74,12 @@ void CheckIfUnique() { //is written name unique
     close(names_file);  
 }
 
+void ReadRoomName() {
+    printf("Enter room name where you want to belong\n-> ");
+    char room_name[100];
+    scanf("%s", room_name);
+    strcpy(user.uroom, room_name);
+}
 
 void PrintOptions() {
     printf("---------------------------\n");
@@ -118,11 +125,12 @@ void ReceiveMessage(int queue) {
 
 int Register() {
     int temp_q = msgget(12345678, 0644 | IPC_CREAT); //create temporary queue to send id to the server, typ logowania - 20
-    CheckIfUnique();
+    ReadUsername();
+    ReadRoomName();
     mes.mtype = 20;
     strcpy(mes.mfrom, user.uname);
     mes.mid = user.uid;
-    strcpy(mes.mtext, "udane");
+    strcpy(mes.mtext, user.uroom);
     msgsnd(temp_q, &mes, (sizeof(mes) - sizeof(long)), 0);
     msgrcv(temp_q, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
     if(strcmp(mes.mtext, "failed") == 0) {

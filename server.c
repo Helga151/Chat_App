@@ -26,6 +26,7 @@ struct User {
     long uid; //unique id - pid
     char uname[100];
     int ulog; //is user logged in: 0 - no, 1 - yes
+    char uroom[100]; //room to which user belongs
 };
 
 //methods
@@ -40,9 +41,43 @@ void RegisterClient(int *arr_queue, int clients_all, int temp_q, User *arr_users
                 strcpy(arr_users[i].uname, mes.mfrom);
                 arr_users[i].uid = mes.mid;
                 arr_users[i].ulog = 1;
+                strcpy(arr_users[i].uroom, mes.mtext);
                 printf("%s %ld %s %d\n", arr_users[i].uname, arr_users[i].uid, mes.mtext, arr_users[i].ulog);
                 //printf("%s %ld %s\n", mes.mfrom, mes.mid, mes.mtext);
                 zm = 1;
+                //check if room name is unique - yes(create new room)
+                int rooms_file = open("rooms_file.txt", O_RDWR | O_CREAT, 0644);
+                if(rooms_file < 0) {
+                    printf("Could not open the file\n");
+                }
+                else {
+                    int unique = 0; //0 - unique
+                    char letter;
+                    char arr[100];
+                    memset(arr, 0, 100);
+                    int j = 0;
+                    while(read(rooms_file, &letter, 1) > 0) {
+                        if(letter == '\n') {
+                            printf("%s\n", arr);
+                            if(strcmp(arr, mes.mtext) == 0) {
+                                printf("Room '%s' exists\n", mes.mtext);
+                                unique = 1;
+                                break;
+                            }
+                            memset(arr, 0, 100);
+                            j = 0;
+                        }
+                        else {
+                            arr[j] = letter;
+                            j++;
+                        }
+                    }
+                    if(unique == 0) {
+                        write(rooms_file, mes.mtext, strlen(mes.mtext));
+                        write(rooms_file, "\n", 1);
+                        close(rooms_file); 
+                    }
+                }
                 break;
             }
         }
@@ -171,6 +206,7 @@ int main(int argc, char* argv[]) {
                 break; //no more clients to check
             }
         }
+        sleep(1);
     }
     //delete all temp files after server stops*/
     return 0;
