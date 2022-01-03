@@ -115,7 +115,7 @@ void RegisterClient(int *arr_queue, int clients_all, int temp_q, User *arr_users
             strcpy(mes.mtext, "failed");
         }
         mes.mtype = server_type;
-        mes.mid = (long)j;
+        mes.mid = (long)j; //j is an index where is the room written by user
         msgsnd(temp_q, &mes, (sizeof(mes) - sizeof(long)), 0);
     }
 }
