@@ -9,5 +9,6 @@ void SendMessage(int current_queue, int* arr_queue, int clients_all, User *arr_u
 void WriteOldMessages(int current_queue);
 void PrintRoomsList(int current_queue);
 void AddUserToFile(User user);
+void PrintUsernames(int current_queue, int *arr_queue, int clients_all, User *arr_users);
 
 #endif

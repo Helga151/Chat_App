@@ -39,6 +39,7 @@ int main(int argc, char* argv[]) {
                 WriteOldMessages(arr_queue[i]);
                 PrintRoomsList(arr_queue[i]);
                 LogoutClient(arr_queue[i], i, arr_queue, clients_all, arr_users);
+                PrintUsernames(arr_queue[i], arr_queue, clients_all, arr_users);
             }
         }
         sleep(1);

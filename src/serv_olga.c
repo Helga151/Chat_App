@@ -204,20 +204,20 @@ void PrintRoomsList(int current_queue) {
         else {
             int i = 1, j = 0;
             char arr[1000], letter, tmp[1000];
-            memset(arr, 0, 100);
-            memset(tmp, 0, 100);
+            memset(arr, 0, 1000);
+            memset(tmp, 0, 1000);
             sprintf(arr, "%d. ", i);
 
             while(read(rooms_file, &letter, 1) > 0) {
                 sprintf(tmp, "%c", letter);
                 strcat(arr, tmp);
-                memset(tmp, 0, 100);
+                memset(tmp, 0, 1000);
 
                 if(letter == '\n') {
                     i++;
                     sprintf(tmp, "%d. ", i);
                     strcat(arr, tmp);
-                    memset(tmp, 0, 100);
+                    memset(tmp, 0, 1000);
                 }
             }
             printf("%s\n", arr);        
@@ -226,5 +226,25 @@ void PrintRoomsList(int current_queue) {
             msgsnd(current_queue, &mes, (sizeof(mes) - sizeof(long)), 0);
         }
         close(rooms_file);
+    }
+}
+
+void PrintUsernames(int current_queue, int *arr_queue, int clients_all, User *arr_users) {
+    Message mes;
+    int receive = msgrcv(current_queue, &mes, (sizeof(mes) - sizeof(long)), 5, IPC_NOWAIT);
+    if(receive > 0) {
+        char arr[1000], tmp[1000];
+        memset(arr, 0, 1000);
+        memset(tmp, 0, 1000);
+        for(int i = 0; i < clients_all; i++) {
+            if(strlen(arr_users[i].uname) > 0) { 
+                sprintf(tmp, "%d. %s\n", i + 1, arr_users[i].uname);
+                strcat(arr, tmp);
+            }
+        }
+        printf("%s\n", arr);  
+        mes.mtype = server_type;
+        strcpy(mes.mtext, arr);
+        msgsnd(current_queue, &mes, (sizeof(mes) - sizeof(long)), 0);
     }
 }

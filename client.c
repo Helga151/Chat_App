@@ -65,10 +65,10 @@ void PrintOptions() {
     printf("2. Show 10 last public messages from current room\n");
     printf("3. Wyloguj uzytkownika - zamknij program\n"); //usunięcie nazwy użytkownika z pliku i zamknęcie programu
     printf("4. Show all existing rooms\n");
+    printf("5. Show all users registered to this server\n"); 
     //dodanie do struktury argumentu mówiącego o grupach w których jestem
     /*printf("3. Zapisz uzytkownika do pokoju\n"); //dopisanie nazwy użytkownika i pidu do pliku danego serwera
     printf("4. Wypisz uzytkownika z pokoju\n");
-    printf("5. Wyswietl liste zalogowanych uzytkownikow\n"); //zapytać czy można usunąć
     printf("6. Wyswietl liste zarejestrowanych kanalow\n"); //jakie serwery
     printf("7. Wyswietl liste uzytkownikow zapisanych do pokoi\n");*/ //dodatkowe pytanie: z jakich pokoi
     printf("Type task number -> ");
@@ -133,6 +133,16 @@ int ReadNumber() {
     return choice;
 } 
 
+void ListingRequest(int queue) {
+    msgsnd(queue, &mes, (sizeof(mes) - sizeof(long)), 0);
+    int receive = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
+    if(receive > 0) {
+        printf("%s\n", mes.mtext); 
+    }
+    else printf("An error has occurred!\n");
+    PrintPressKey();
+}
+
 int main(int argc, char* argv[]) {
     printf("--CZAT by Olga Gerlich and Pawel Marczewski--\n");
     printf("Hi!\n");
@@ -193,14 +203,8 @@ int main(int argc, char* argv[]) {
             } 
             case 2: { //writing 10 last messages
                 mes.mtype = 2;
-                msgsnd(queue, &mes, (sizeof(mes) - sizeof(long)), 0);
-                int receive = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
-                if(receive > 0) {
-                    printf("10 wiadomosci\n");
-                    printf("%s\n", mes.mtext); 
-                }
-                else printf("An error has occurred!\n");
-                PrintPressKey();
+                printf("Last messages:\n");
+                ListingRequest(queue);
                 break;
             } 
             case 3: { //wyloguj
@@ -219,14 +223,15 @@ int main(int argc, char* argv[]) {
             } 
             case 4: {
                 mes.mtype = 4;
-                msgsnd(queue, &mes, (sizeof(mes) - sizeof(long)), 0);
-                int receive = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
-                if(receive > 0) {
-                    printf("%s\n", mes.mtext); 
-                }
-                else printf("An error has occurred!\n");
-                PrintPressKey();
+                printf("All rooms:\n");
+                ListingRequest(queue);
                 break;
+            }
+            case 5: {
+                mes.mtype = 5;
+                printf("All users on this server:\n");
+                ListingRequest(queue);
+                break;           
             }
             default: {
                 printf("Podana opcja nie istnieje!\n");
