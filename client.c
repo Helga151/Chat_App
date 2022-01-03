@@ -71,6 +71,7 @@ void PrintOptions() {
     printf("1. Send a message\n");
     printf("2. Show 10 last public messages from current room\n");
     printf("3. Wyloguj uzytkownika - zamknij program\n"); //usunięcie nazwy użytkownika z pliku i zamknęcie programu
+    printf("4. Show all existing rooms\n");
     //dodanie do struktury argumentu mówiącego o grupach w których jestem
     /*printf("3. Zapisz uzytkownika do pokoju\n"); //dopisanie nazwy użytkownika i pidu do pliku danego serwera
     printf("4. Wypisz uzytkownika z pokoju\n");
@@ -90,7 +91,7 @@ void PrintPressKey() {
 }
 
 void ReceiveMessage(int queue) {
-    int rcv = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, IPC_NOWAIT);
+    int rcv = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), msg_from_server, IPC_NOWAIT);
     if(rcv > 0) {
         if(strcmp(mes.mto, "server") == 0){ //public message
             if(strcmp(mes.mfrom, user.uname) != 0) {
@@ -188,7 +189,7 @@ int main(int argc, char* argv[]) {
                 mes.mid = user.uid;
                 strcpy(mes.mfrom, user.uname);
                 msgsnd(queue, &mes, (sizeof(mes) - sizeof(long)), 0);
-                msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
+                msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), msg_from_server, 0);
                 if(strcmp(mes.mtext, "none") == 0) {
                     printf("Written recipent does not exist\n");
                 }
@@ -223,6 +224,17 @@ int main(int argc, char* argv[]) {
                 return 0;
                 break;
             } 
+            case 4: {
+                mes.mtype = 4;
+                msgsnd(queue, &mes, (sizeof(mes) - sizeof(long)), 0);
+                int receive = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
+                if(receive > 0) {
+                    printf("%s\n", mes.mtext); 
+                }
+                else printf("An error has occurred!\n");
+                PrintPressKey();
+                break;
+            }
             default: {
                 printf("Podana opcja nie istnieje!\n");
                 //break;

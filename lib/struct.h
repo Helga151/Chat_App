@@ -4,6 +4,7 @@
 #include <time.h>
 #include <stdio.h>
 #define server_type 100
+#define msg_from_server 200
 
 typedef struct Message Message;
 struct Message {

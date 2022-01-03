@@ -5,8 +5,19 @@
 #include <unistd.h>
 #include <sys/msg.h>
 #include <string.h>
+#include <signal.h>
+#include <stdlib.h>
+
+void CloseProgram() {
+    unlink("txt/rooms_file");
+    unlink("txt/chat");
+    unlink("txt/names_file");
+    printf("\nBye\n");
+    exit(0);
+}
 
 int main(int argc, char* argv[]) {
+    signal(SIGINT, CloseProgram);
     int temp_q = msgget(12345678, 0644 | IPC_CREAT);
     int clients_all = 5; //max 5 clients from the task instruction
     int arr_queue[clients_all];
@@ -26,11 +37,11 @@ int main(int argc, char* argv[]) {
             if(arr_queue[i] != 0) { //look for a not empty queue
                 SendMessage(arr_queue[i], arr_queue, clients_all, arr_users);
                 WriteOldMessages(arr_queue[i]);
+                PrintRoomsList(arr_queue[i]);
                 LogoutClient(arr_queue[i], i, arr_queue, clients_all, arr_users);
             }
         }
         sleep(1);
     }
-    //delete all temp files after server stops*/
     return 0;
 }

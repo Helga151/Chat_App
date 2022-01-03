@@ -4,45 +4,59 @@
 #include <fcntl.h>
 #include <sys/msg.h>
 #include <unistd.h>
+#include <errno.h>
 
-Message mes;
-
-void CheckIfUnique() {
-    int rooms_file = open("txt/rooms_file", O_RDWR | O_CREAT, 0644);
-    if(rooms_file < 0) {
-        printf("Could not open the file\n");
+void CheckIfUnique(char *text) {
+    int rooms_file = open("txt/rooms_file", O_RDWR | O_CREAT | O_EXCL, 0644);
+    int enter = 0;
+    if(errno == EEXIST) { //file existed - write \n in the beginning
+        printf("File existed\n");
+        enter = 1;
+        rooms_file = open("txt/rooms_file", O_RDWR | O_CREAT, 0644);
+        if(rooms_file < 0) { //or error occured
+            printf("Could not open the file\n");
+            return;
+        }
     }
-    else {
-        int unique = 0; //0 - unique
-        char letter;
-        char arr[100];
-        memset(arr, 0, 100);
-        int j = 0;
-        while(read(rooms_file, &letter, 1) > 0) {
-            if(letter == '\n') {
-                if(strcmp(arr, mes.mtext) == 0) {
-                    printf("Room '%s' exists\n", mes.mtext);
-                    unique = 1;
-                    break;
-                }
-                memset(arr, 0, 100);
-                j = 0;
+    else { //file didn't exist 
+        printf("File didn't existed\n");
+    }
+    int unique = 0; //0 - unique
+    char letter;
+    char arr[100];
+    memset(arr, 0, 100);
+    int j = 0;
+    while(read(rooms_file, &letter, 1) > 0) {
+        if(letter == '\n') {
+            if(strcmp(arr, text) == 0) {
+                printf("Room '%s' exists\n", text);
+                unique = 1;
+                break;
             }
-            else {
-                arr[j] = letter;
-                j++;
-            }
+            memset(arr, 0, 100);
+            j = 0;
         }
-        if(unique == 0) {
-            write(rooms_file, mes.mtext, strlen(mes.mtext));
+        else {
+            arr[j] = letter;
+            j++;
+        }   
+    }
+    if(strcmp(arr, text) == 0) { //check the last line
+        printf("Room '%s' exists\n", text);
+        unique = 1;
+    }
+    if(unique == 0) {
+        if(enter == 1) {
             write(rooms_file, "\n", 1);
-            close(rooms_file); 
         }
+        write(rooms_file, text, strlen(text));
+        close(rooms_file); 
     }
 }
 
 void RegisterClient(int *arr_queue, int clients_all, int temp_q, User *arr_users) {
     //user has logged in
+    Message mes;
     int receive = msgrcv(temp_q, &mes, (sizeof(mes) - sizeof(long)), 20, IPC_NOWAIT);
     if(receive > 0) {
         int zm = 0;
@@ -54,10 +68,9 @@ void RegisterClient(int *arr_queue, int clients_all, int temp_q, User *arr_users
                 arr_users[i].ulog = 1;
                 strcpy(arr_users[i].uroom, mes.mtext);
                 printf("%s %ld %s %d\n", arr_users[i].uname, arr_users[i].uid, mes.mtext, arr_users[i].ulog);
-                //printf("%s %ld %s\n", mes.mfrom, mes.mid, mes.mtext);
                 zm = 1;
                 //check if room name is unique - yes(create new room)
-                CheckIfUnique();
+                CheckIfUnique(mes.mtext);
                 break;
             }
         }
@@ -71,6 +84,7 @@ void RegisterClient(int *arr_queue, int clients_all, int temp_q, User *arr_users
 }
 
 void SendMessage(int current_queue, int* arr_queue, int clients_all, User *arr_users) {
+    Message mes;
     int receive = msgrcv(current_queue, &mes, (sizeof(mes) - sizeof(long)), 1, IPC_NOWAIT);
     if(receive > 0) {
         //printf("%s\n", mes.mtext);
@@ -85,7 +99,7 @@ void SendMessage(int current_queue, int* arr_queue, int clients_all, User *arr_u
         //public - send the message to every client
             for(int i = 0; i < clients_all; i++) {
                 if(arr_queue[i] != 0) {
-                    mes.mtype = server_type;
+                    mes.mtype = msg_from_server;
                     msgsnd(arr_queue[i], &mes, (sizeof(mes) - sizeof(long)), 0);
                     printf("poszlo\n");
                 }
@@ -106,7 +120,7 @@ void SendMessage(int current_queue, int* arr_queue, int clients_all, User *arr_u
             int zm = 0;
             for(int i = 0; i < clients_all; i++) {
                 if(arr_queue[i] != 0 && arr_users[i].ulog == 1 && strcmp(arr_users[i].uname, mes.mto) == 0) {
-                    mes.mtype = server_type;
+                    mes.mtype = msg_from_server;
                     msgsnd(arr_queue[i], &mes, (sizeof(mes) - sizeof(long)), 0);
                     printf("poszlo\n");
                     zm = 1;
@@ -115,7 +129,7 @@ void SendMessage(int current_queue, int* arr_queue, int clients_all, User *arr_u
             }
             if(zm == 0) {
                 //send feedback to client that written recipent does not exist
-                mes.mtype = server_type;
+                mes.mtype = msg_from_server;
                 strcpy(mes.mtext, "none");
                 printf("nie ma takiego uzytkownika\n");
             }
@@ -125,6 +139,7 @@ void SendMessage(int current_queue, int* arr_queue, int clients_all, User *arr_u
 }
 
 void WriteOldMessages(int current_queue) {
+    Message mes;
     int receive = msgrcv(current_queue, &mes, (sizeof(mes) - sizeof(long)), 2, IPC_NOWAIT);
     if(receive > 0) {
         printf("10 wiadomosci\n");
@@ -159,5 +174,41 @@ void WriteOldMessages(int current_queue) {
         strcpy(mes.mtext, arr);
         mes.mtype = server_type;
         msgsnd(current_queue, &mes, (sizeof(mes) - sizeof(long)), 0);
+    }
+}
+
+void PrintRoomsList(int current_queue) {
+    Message mes;
+    int receive = msgrcv(current_queue, &mes, (sizeof(mes) - sizeof(long)), 4, IPC_NOWAIT);
+    if(receive > 0) {
+        int rooms_file = open("txt/rooms_file", O_RDONLY, 0644);
+        if(rooms_file < 0) {
+            printf("Could not open the file\n");
+        }
+        else {
+            int i = 1, j = 0;
+            char arr[1000], letter, tmp[1000];
+            memset(arr, 0, 100);
+            memset(tmp, 0, 100);
+            sprintf(arr, "%d. ", i);
+
+            while(read(rooms_file, &letter, 1) > 0) {
+                sprintf(tmp, "%c", letter);
+                strcat(arr, tmp);
+                memset(tmp, 0, 100);
+
+                if(letter == '\n') {
+                    i++;
+                    sprintf(tmp, "%d. ", i);
+                    strcat(arr, tmp);
+                    memset(tmp, 0, 100);
+                }
+            }
+            printf("%s\n", arr);        
+            mes.mtype = server_type;
+            strcpy(mes.mtext, arr);
+            msgsnd(current_queue, &mes, (sizeof(mes) - sizeof(long)), 0);
+        }
+        close(rooms_file);
     }
 }
