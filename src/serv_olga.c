@@ -54,6 +54,21 @@ void CheckIfUnique(char *text) {
     }
 }
 
+void AddUserToFile(User user) {
+    int names_file = open("txt/names_file", O_WRONLY | O_CREAT | O_APPEND, 0644);
+    if(names_file < 0) {
+        printf("Could not open the file\n");
+        return;
+    }
+    char pid[20];
+    sprintf(pid, "%ld", user.uid);
+    write(names_file, user.uname, strlen(user.uname));
+    write(names_file, "_", 1);
+    write(names_file, pid, strlen(pid));
+    write(names_file, "\n", 1);
+    close(names_file);  
+}
+
 void RegisterClient(int *arr_queue, int clients_all, int temp_q, User *arr_users) {
     //user has logged in
     Message mes;
@@ -71,6 +86,7 @@ void RegisterClient(int *arr_queue, int clients_all, int temp_q, User *arr_users
                 zm = 1;
                 //check if room name is unique - yes(create new room)
                 CheckIfUnique(mes.mtext);
+                AddUserToFile(arr_users[i]);
                 break;
             }
         }

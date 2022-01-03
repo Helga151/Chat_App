@@ -17,7 +17,7 @@ User user;
 
 void ReadUsername() { //check if written name is unique
     int unique = 1; //0 - unique
-    int names_file = open("txt/names_file", O_RDWR | O_CREAT, 0644);
+    int names_file = open("txt/names_file", O_RDONLY | O_CREAT, 0644);
     if(names_file < 0) {
         printf("Could not open the file\n");
         return;
@@ -49,14 +49,7 @@ void ReadUsername() { //check if written name is unique
     //if unique - add name to the text file
     strcpy(user.uname, name);
     user.uid = getpid();
-    char pid[20];
-    sprintf(pid, "%ld", user.uid);
-
-    write(names_file, user.uname, strlen(user.uname));
-    write(names_file, "_", 1);
-    write(names_file, pid, strlen(pid));
-    write(names_file, "\n", 1);
-    close(names_file);  
+    close(names_file); 
 }
 
 void ReadRoomName() {
