@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <errno.h>
 
-void CheckIfUnique(char *text) {
+int CheckIfUnique(char *text) {
     int rooms_file = open("txt/rooms_file", O_RDWR | O_CREAT | O_EXCL, 0644);
     int enter = 0;
     if(errno == EEXIST) { //file existed - write \n in the beginning
@@ -15,7 +15,7 @@ void CheckIfUnique(char *text) {
         rooms_file = open("txt/rooms_file", O_RDWR | O_CREAT, 0644);
         if(rooms_file < 0) { //or error occured
             printf("Could not open the file\n");
-            return;
+            return -1;
         }
     }
     else { //file didn't exist 
@@ -52,6 +52,7 @@ void CheckIfUnique(char *text) {
         write(rooms_file, text, strlen(text));
         close(rooms_file); 
     }
+    return unique;
 }
 
 void AddUserToFile(User user) {
@@ -69,23 +70,42 @@ void AddUserToFile(User user) {
     close(names_file);  
 }
 
-void RegisterClient(int *arr_queue, int clients_all, int temp_q, User *arr_users) {
+void RegisterClient(int *arr_queue, int clients_all, int temp_q, User *arr_users, char (*arr_rooms)[100]) {
     //user has logged in
     Message mes;
     int receive = msgrcv(temp_q, &mes, (sizeof(mes) - sizeof(long)), 20, IPC_NOWAIT);
     if(receive > 0) {
         int zm = 0;
+        int j;
         for(int i = 0; i < clients_all; i++) {
             if(arr_queue[i] == 0) { //first empty slot
                 arr_queue[i] = msgget(mes.mid, 0644 | IPC_CREAT);
                 strcpy(arr_users[i].uname, mes.mfrom);
                 arr_users[i].uid = mes.mid;
                 arr_users[i].ulog = 1;
-                strcpy(arr_users[i].uroom, mes.mtext);
                 printf("%s %ld %s %d\n", arr_users[i].uname, arr_users[i].uid, mes.mtext, arr_users[i].ulog);
                 zm = 1;
                 //check if room name is unique - yes(create new room)
-                CheckIfUnique(mes.mtext);
+                int tmp = CheckIfUnique(mes.mtext);
+                if(tmp == 0) { //unique room name
+                    for(j = 1; j <= rooms_all; j++) { //find first empty slot for new room
+                        if(strlen(arr_rooms[j]) == 0) {
+                            strcpy(arr_rooms[j], mes.mtext);
+                            arr_users[i].urooms[j] = 1;
+                            printf("%d. %s\n", j, arr_rooms[j]);
+                            break;
+                        }
+                    }
+                }
+                else if(tmp == 1) { //not unique and not error, assign 1 to user.uroom where room name is
+                    for(j = 1; j <= rooms_all; j++) { 
+                        if(strcmp(arr_rooms[j], mes.mtext) == 0) {
+                            arr_users[i].urooms[j] = 1;
+                            printf("%d. %s\n", j, arr_rooms[j]);
+                            break;
+                        }
+                    }
+                }
                 AddUserToFile(arr_users[i]);
                 break;
             }
@@ -95,6 +115,7 @@ void RegisterClient(int *arr_queue, int clients_all, int temp_q, User *arr_users
             strcpy(mes.mtext, "failed");
         }
         mes.mtype = server_type;
+        mes.mid = (long)j;
         msgsnd(temp_q, &mes, (sizeof(mes) - sizeof(long)), 0);
     }
 }

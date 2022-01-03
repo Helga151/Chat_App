@@ -28,10 +28,13 @@ int main(int argc, char* argv[]) {
         arr_users[i].ulog = 0;
         arr_users[i].uname[0]='\0';
     }
-    int receive;
-    //ShowQueue(clients_all,arr_users);
+
+    char arr_rooms[rooms_all + 1][100];
+    for(int i = 1; i <= rooms_all; i++) {
+        memset(arr_rooms[i], 0, 100);
+    }   
     while(1) {
-        RegisterClient(arr_queue, clients_all, temp_q, arr_users);
+        RegisterClient(arr_queue, clients_all, temp_q, arr_users, arr_rooms);
         //checking if there is any message
         for(int i = 0; i < clients_all; i++) {
             if(arr_queue[i] != 0) { //look for a not empty queue

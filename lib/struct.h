@@ -5,6 +5,7 @@
 #include <stdio.h>
 #define server_type 100
 #define msg_from_server 200
+#define rooms_all 20
 
 typedef struct Message Message;
 struct Message {
@@ -21,7 +22,7 @@ struct User {
     long uid; //unique id - pid
     char uname[100];
     int ulog; //is user logged in: 0 - no, 1 - yes
-    char uroom[100]; //room to which user belongs
+    int urooms[rooms_all]; //rooms to which user belongs, 1 - belongs
 };
 
 #endif

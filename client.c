@@ -52,13 +52,6 @@ void ReadUsername() { //check if written name is unique
     close(names_file); 
 }
 
-void ReadRoomName() {
-    printf("Enter room name where you want to belong\n-> ");
-    char room_name[100];
-    scanf("%s", room_name);
-    strcpy(user.uroom, room_name);
-}
-
 void PrintOptions() {
     printf("---------------------------\n");
     printf("1. Send a message\n");
@@ -69,7 +62,6 @@ void PrintOptions() {
     //dodanie do struktury argumentu mówiącego o grupach w których jestem
     /*printf("3. Zapisz uzytkownika do pokoju\n"); //dopisanie nazwy użytkownika i pidu do pliku danego serwera
     printf("4. Wypisz uzytkownika z pokoju\n");
-    printf("6. Wyswietl liste zarejestrowanych kanalow\n"); //jakie serwery
     printf("7. Wyswietl liste uzytkownikow zapisanych do pokoi\n");*/ //dodatkowe pytanie: z jakich pokoi
     printf("Type task number -> ");
 }
@@ -105,11 +97,14 @@ void ReceiveMessage(int queue) {
 int Register() {
     int temp_q = msgget(12345678, 0644 | IPC_CREAT); //create temporary queue to send id to the server, typ logowania - 20
     ReadUsername();
-    ReadRoomName();
+    printf("Enter room name where you want to belong\n-> ");
+    char room_name[100];
+    scanf("%s", room_name);
+    
     mes.mtype = 20;
     strcpy(mes.mfrom, user.uname);
     mes.mid = user.uid;
-    strcpy(mes.mtext, user.uroom);
+    strcpy(mes.mtext, room_name);
     msgsnd(temp_q, &mes, (sizeof(mes) - sizeof(long)), 0);
     msgrcv(temp_q, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
     if(strcmp(mes.mtext, "failed") == 0) {
@@ -120,6 +115,7 @@ int Register() {
     }
     printf("Twoj login to %s a identyfikator %ld\n", user.uname, user.uid);
     user.ulog = 1;
+    user.urooms[(int)mes.mid] = 1;
     int queue = msgget(user.uid, 0644 | IPC_CREAT); //create queue for this client
     return queue;
     //printf("%d\n", queue);
