@@ -49,8 +49,8 @@ int main(int argc, char* argv[]) {
                 PrintRoomsList(arr_queue[i]);
                 PrintUsernames(arr_queue[i], arr_queue, clients_all, arr_users);
                 //arr_users[i + 1] - index from 1
-                AddUserToRoom(arr_queue[i], arr_rooms, arr_users[i + 1]);
-                WriteUsersRooms(arr_queue[i], arr_users[i + 1], arr_rooms);
+                AddUserToRoom(arr_queue[i], arr_rooms, arr_users[i]);
+                WriteUsersRooms(arr_queue[i], arr_users[i], arr_rooms);
                 LogoutClient(i, arr_queue, clients_all, arr_users);
                 SendHeartbeat(arr_time, i, arr_queue, clients_all, arr_users);
             }
