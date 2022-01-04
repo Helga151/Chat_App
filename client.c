@@ -168,6 +168,7 @@ int main(int argc, char* argv[]) {
                     scanf("%s", recipient);
                     while(strcmp(recipient, user.uname) == 0) {
                         printf("You can not send a message to yourself\n");
+                        printf("Whom to send?: ");
                         scanf("%s", recipient);
                     }
                     strcpy(mes.mto, recipient);
@@ -181,8 +182,7 @@ int main(int argc, char* argv[]) {
                 printf("Napisz wiadomosc: ");
                 char text[1000];
                 getchar();
-                scanf("%[^\n]s", text);
-                strcpy(mes.mtext, text);
+                scanf("%[^\n]s", mes.mtext);
                 mes.msec = time(NULL);
                 mes.mtype = 1;
                 mes.mid = user.uid;

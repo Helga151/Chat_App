@@ -9,13 +9,13 @@
 int main(int argc, char* argv[]) {
     int temp_q = msgget(12345678, 0644 | IPC_CREAT);
     int clients_all = 5; //max 5 clients from the task instruction
-    int arr_queue[clients_all];
-    User arr_users[clients_all];
-    for(int i = 0; i < clients_all; i++) {
+    int arr_queue[clients_all+1];
+    User arr_users[clients_all+1];
+    for(int i = 0; i < clients_all+1; i++) {
         arr_queue[i] = 0;
         arr_users[i].uid = 0;
         arr_users[i].ulog = 0;
-        arr_users[i].uname[0]='\0';
+        memset(arr_users[i].uname,0,sizeof(arr_users[i].uname));
     }
     int receive;
     //ShowQueue(clients_all,arr_users);
