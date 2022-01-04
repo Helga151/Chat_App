@@ -35,6 +35,7 @@ int main(int argc, char* argv[]) {
         memset(arr_rooms[i], 0, 100);
     }   
     while(1) {
+        //PrintRoomsList(temp_q);
         RegisterClient(arr_queue, clients_all, temp_q, arr_users, arr_rooms);
         //checking if there is any message
         for(int i = 0; i < clients_all; i++) {
@@ -44,9 +45,10 @@ int main(int argc, char* argv[]) {
                 WriteOldMessages(arr_queue[i]);
                 PrintRoomsList(arr_queue[i]);
                 PrintUsernames(arr_queue[i], arr_queue, clients_all, arr_users);
+                AddUserToRoom(arr_queue[i], arr_rooms, arr_users[i]);
+                WriteUsersRooms(arr_queue[i], arr_users[i], arr_rooms);
                 LogoutClient(i, arr_queue, clients_all, arr_users);
-                SendHeartbeat(arr_time, i, arr_queue,clients_all,arr_users);
-
+                SendHeartbeat(arr_time, i, arr_queue, clients_all, arr_users);
             }
         }
         sleep(1);

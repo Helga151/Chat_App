@@ -59,9 +59,11 @@ void PrintOptions() {
     printf("3. Wyloguj uzytkownika - zamknij program\n"); //usunięcie nazwy użytkownika z pliku i zamknęcie programu
     printf("4. Show all existing rooms\n");
     printf("5. Show all users registered to this server\n"); 
+    printf("6. Add user to a room\n");
+    printf("7. Write rooms where user belongs\n");
+    printf("8. Remove user from a room\n");
     //dodanie do struktury argumentu mówiącego o grupach w których jestem
-    /*printf("3. Zapisz uzytkownika do pokoju\n"); //dopisanie nazwy użytkownika i pidu do pliku danego serwera
-    printf("4. Wypisz uzytkownika z pokoju\n");
+    /*printf("4. Wypisz uzytkownika z pokoju\n");
     printf("7. Wyswietl liste uzytkownikow zapisanych do pokoi\n");*/ //dodatkowe pytanie: z jakich pokoi
     printf("Type task number -> ");
 }
@@ -94,9 +96,37 @@ void ReceiveMessage(int queue) {
     }
 }
 
+void ListingRequest(int queue) {
+    msgsnd(queue, &mes, (sizeof(mes) - sizeof(long)), 0);
+    int receive = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
+    if(receive > 0) {
+        printf("%s\n", mes.mtext); 
+    }
+    else printf("An error has occurred!\n");
+}
+
 int Register() {
     int temp_q = msgget(12345678, 0644 | IPC_CREAT); //create temporary queue to send id to the server, typ logowania - 20
     ReadUsername();
+    //nwm czm to nie działa, ale czasami daje Segmentation fault (core dumped)
+    /*mes.mtype = 4;
+    msgsnd(temp_q, &mes, (sizeof(mes) - sizeof(long)), 0);
+    int receive = msgrcv(temp_q, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
+    if(receive > 0) {
+        if(strcmp(mes.mtext, "nofile") == 0) {
+            printf("No created rooms yet\n");
+            printf("Enter room name where you want to belong\n-> ");
+        }
+        else {
+            printf("Available rooms:\n");
+            printf("%s\n", mes.mtext); 
+            printf("Choose a room from above or create a new one\n-> ");
+        }
+    }
+    else {
+        printf("An error has occurred!\n");
+        return 0;
+    }*/
     printf("Enter room name where you want to belong\n-> ");
     char room_name[100];
     scanf("%s", room_name);
@@ -106,18 +136,24 @@ int Register() {
     mes.mid = user.uid;
     strcpy(mes.mtext, room_name);
     msgsnd(temp_q, &mes, (sizeof(mes) - sizeof(long)), 0);
-    msgrcv(temp_q, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
-    if(strcmp(mes.mtext, "failed") == 0) {
-        printf("No empty slots left!\n");
-        printf("App is closing\n");
-        PrintPressKey();
+    int receive = msgrcv(temp_q, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
+    if(receive > 0) {
+        if(strcmp(mes.mtext, "failed") == 0) {
+            printf("No empty slots left!\n");
+            printf("App is closing\n");
+            PrintPressKey();
+            return 0;
+        }
+        printf("Your login: '%s' and id: '%ld'\n", user.uname, user.uid);
+        user.ulog = 1;
+        user.urooms[(int)mes.mid] = 1;
+        int queue = msgget(user.uid, 0644 | IPC_CREAT); //create queue for this client
+        return queue;
+    }
+    else {
+        printf("An error has occurred!\n");
         return 0;
     }
-    printf("Twoj login to %s a identyfikator %ld\n", user.uname, user.uid);
-    user.ulog = 1;
-    user.urooms[(int)mes.mid] = 1;
-    int queue = msgget(user.uid, 0644 | IPC_CREAT); //create queue for this client
-    return queue;
     //printf("%d\n", queue);
 }
 
@@ -138,38 +174,19 @@ void HeartBeat(int queue){
     }
 }
 
-void ListingRequest(int queue) {
-    msgsnd(queue, &mes, (sizeof(mes) - sizeof(long)), 0);
-    int receive = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
-    if(receive > 0) {
-        printf("%s\n", mes.mtext); 
-    }
-    else printf("An error has occurred!\n");
-    PrintPressKey();
-}
-
 int main(int argc, char* argv[]) {
     printf("--CZAT by Olga Gerlich and Pawel Marczewski--\n");
     printf("Hi!\n");
     user.ulog = 0;
-    int queue;
-    if(user.ulog == 0) {
-        queue = Register();
-        if(queue == 0) return 0;
-        else if(fork()==0){
-            HeartBeat(queue);
-        }
-        printf("%s %ld %ld\n", mes.mtext, mes.mid, user.uid);
-    }
-    else {
-        printf("Użytkownik już jest zalogowany\n");
+    int queue = Register();
+    if(queue == 0) return 0;
+    else if(fork()==0){
+        HeartBeat(queue);
     }
     PrintPressKey();
     while(1) {
         ReceiveMessage(queue);
         PrintOptions();
-        printf("\n");
-        ReceiveMessage(queue);
         switch (ReadNumber()) {
             case 1: { //sending message to room
                 printf("Send private (1) or public (2) message\n");
@@ -213,6 +230,7 @@ int main(int argc, char* argv[]) {
                 mes.mtype = 2;
                 printf("Last messages:\n");
                 ListingRequest(queue);
+                PrintPressKey();
                 break;
             } 
             case 3: { //wyloguj
@@ -233,17 +251,60 @@ int main(int argc, char* argv[]) {
                 mes.mtype = 4;
                 printf("All rooms:\n");
                 ListingRequest(queue);
+                PrintPressKey();
                 break;
             }
             case 5: {
                 mes.mtype = 5;
                 printf("All users on this server:\n");
                 ListingRequest(queue);
+                PrintPressKey();
                 break;           
+            }
+            case 6: {
+                //print all rooms and then ask where to add the user
+                //if user enters room which doesn't exist, create new one
+                mes.mtype = 4;
+                printf("Available rooms:\n");
+                ListingRequest(queue);
+                printf("You can create a new room by writing unique room name\n");
+                printf("Enter room name where you want to be added:\n-> ");
+                char room[100];
+                scanf("%s", room);
+                mes.mtype = 6;
+                strcpy(mes.mtext, room);
+                msgsnd(queue, &mes, (sizeof(mes) - sizeof(long)), 0);
+                int receive = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
+                if(receive > 0) {
+                    if((int)mes.mid == 0) {
+                        printf("No empty room slots left\n");
+                    }
+                    else {
+                        if(user.urooms[(int)mes.mid] == 0) {
+                            user.urooms[(int)mes.mid] = 1;
+                            printf("User correctly added to room '%s'\n", room);
+                        }
+                        else {
+                            printf("User has already belonged to this room\n");
+                        }
+                    }
+                }
+                else printf("An error has occurred!\n");
+                PrintPressKey();
+                break;
+            }
+            case 7: {
+                mes.mtype = 7;
+                msgsnd(queue, &mes, (sizeof(mes) - sizeof(long)), 0);
+                /*int receive = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
+                if(receive > 0) {
+                    printf("Rooms:\n");
+                
+                }*/
+                break;
             }
             default: {
                 printf("Podana opcja nie istnieje!\n");
-                //break;
             }
         }
     }
