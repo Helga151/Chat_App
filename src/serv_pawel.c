@@ -7,8 +7,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-Message mes;
-
 void ShowQueue(int clients_all, User *arr_users){
     for(int i = 0; i<clients_all; i++) {
         printf("%ld\t",arr_users[i].uid);
@@ -17,17 +15,12 @@ void ShowQueue(int clients_all, User *arr_users){
     }
 }
 void DeleteFromQueue(int *arr_queue, int clients_all, int id, User *arr_users){
-    int i;
-    for(i = id; arr_queue[i+2]!=0 || i+1<clients_all; i++) {
+    for(int i = id; i<clients_all; i++) {
+        arr_queue[i]=arr_queue[i+1];
         arr_users[i].uid=arr_users[i+1].uid;
         arr_users[i].ulog=arr_users[i+1].ulog;
         strcpy(arr_users[i].uname,arr_users[i+1].uname);
     }
-    i++;
-    arr_queue[i]=0;
-    arr_users[i].uid=0;
-    arr_users[i].ulog=0;
-    arr_users[i].uname[0]='\0';
     ShowQueue(clients_all,arr_users);
 }
 
@@ -49,9 +42,10 @@ int CountClientsInFile(){
     return i;
 }
 
-void DeleteLine(char plik[20],User Client){
-    char linia[150],id[20];
-    memset(linia,0,20);
+void DeleteLine(User Client){
+    char plik[]="txt/names_file";
+    char linia[150];
+    memset(linia,0,150);
     sprintf(linia, "%s_%ld",Client.uname, Client.uid);
     printf("%s\n",linia);
 
@@ -100,16 +94,34 @@ void DeleteLine(char plik[20],User Client){
     close(fd);
 }
 
-void LogoutClient(int current_queue,int id, int* arr_queue, int clients_all, User *arr_users){
-    int receive = msgrcv(current_queue, &mes, (sizeof(mes) - sizeof(long)), 3, IPC_NOWAIT);
+void LogoutClient(int id, int* arr_queue, int clients_all, User *arr_users){
+    Message mes;
+    int receive = msgrcv(arr_queue[id], &mes, (sizeof(mes) - sizeof(long)), 3, IPC_NOWAIT);
     if(receive > 0) {
         printf("wylogowuje %s\n",arr_users[id].uname);
-        DeleteLine("txt/names_file",arr_users[id]);
-        mes.mtype=100; //tu pomyśleć jak dać server_type
+        DeleteLine(arr_users[id]);
+        mes.mtype=100; 
         strcpy(mes.mtext,"Godbye!!!\n");
-        msgsnd(current_queue, &mes, (sizeof(mes) - sizeof(long)), 0);
+        msgsnd(arr_queue[id], &mes, (sizeof(mes) - sizeof(long)), 0);
         DeleteFromQueue(arr_queue,clients_all,id,arr_users);
         printf("done\n");
     }
     //else printf("An error has occurred!\n");
+}
+
+void SendHeartbeat(int* arr_time,int id, int* arr_queue,int clients_all, User *arr_users){
+    Message mes;
+    mes.mtype=11;
+    strcpy(mes.mtext,"Heart");
+    msgsnd(arr_queue[id], &mes, (sizeof(mes) - sizeof(long)), 0);
+    if (msgrcv(arr_queue[id], &mes, (sizeof(mes) - sizeof(long)), 12, IPC_NOWAIT)>0){
+        arr_time[id]=5;
+    }
+    else if(arr_time[id]<0){
+        printf("wylogowuje %s\n",arr_users[id].uname);
+        DeleteLine(arr_users[id]);
+        DeleteFromQueue(arr_queue,clients_all,id,arr_users);
+        printf("done\n");
+        arr_time[id]=5;
+    }
 }
