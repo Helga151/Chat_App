@@ -94,17 +94,34 @@ void DeleteLine(User Client){
     close(fd);
 }
 
-void LogoutClient(int current_queue,int id, int* arr_queue, int clients_all, User *arr_users){
+void LogoutClient(int id, int* arr_queue, int clients_all, User *arr_users){
     Message mes;
-    int receive = msgrcv(current_queue, &mes, (sizeof(mes) - sizeof(long)), 3, IPC_NOWAIT);
+    int receive = msgrcv(arr_queue[id], &mes, (sizeof(mes) - sizeof(long)), 3, IPC_NOWAIT);
     if(receive > 0) {
         printf("wylogowuje %s\n",arr_users[id].uname);
         DeleteLine(arr_users[id]);
-        mes.mtype=100; //tu pomyśleć jak dać server_type
+        mes.mtype=100; 
         strcpy(mes.mtext,"Godbye!!!\n");
-        msgsnd(current_queue, &mes, (sizeof(mes) - sizeof(long)), 0);
+        msgsnd(arr_queue[id], &mes, (sizeof(mes) - sizeof(long)), 0);
         DeleteFromQueue(arr_queue,clients_all,id,arr_users);
         printf("done\n");
     }
     //else printf("An error has occurred!\n");
+}
+
+void SendHeartbeat(int* arr_time,int id, int* arr_queue,int clients_all, User *arr_users){
+    Message mes;
+    mes.mtype=11;
+    strcpy(mes.mtext,"Heart");
+    msgsnd(arr_queue[id], &mes, (sizeof(mes) - sizeof(long)), 0);
+    if (msgrcv(arr_queue[id], &mes, (sizeof(mes) - sizeof(long)), 12, IPC_NOWAIT)>0){
+        arr_time[id]=5;
+    }
+    else if(arr_time[id]<0){
+        printf("wylogowuje %s\n",arr_users[id].uname);
+        DeleteLine(arr_users[id]);
+        DeleteFromQueue(arr_queue,clients_all,id,arr_users);
+        printf("done\n");
+        arr_time[id]=5;
+    }
 }

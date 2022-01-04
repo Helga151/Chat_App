@@ -9,12 +9,13 @@
 int main(int argc, char* argv[]) {
     int temp_q = msgget(12345678, 0644 | IPC_CREAT);
     int clients_all = 5; //max 5 clients from the task instruction
-    int arr_queue[clients_all+1];
+    int arr_queue[clients_all+1],arr_time[clients_all];
     User arr_users[clients_all+1];
     for(int i = 0; i < clients_all+1; i++) {
         arr_queue[i] = 0;
         arr_users[i].uid = 0;
         arr_users[i].ulog = 0;
+        arr_time[i%clients_all]=10;
         memset(arr_users[i].uname,0,sizeof(arr_users[i].uname));
     }
     int receive;
@@ -24,9 +25,11 @@ int main(int argc, char* argv[]) {
         //checking if there is any message
         for(int i = 0; i < clients_all; i++) {
             if(arr_queue[i] != 0) { //look for a not empty queue
+                arr_time[i]--;
                 SendMessage(arr_queue[i], arr_queue, clients_all, arr_users);
                 WriteOldMessages(arr_queue[i]);
-                LogoutClient(arr_queue[i], i, arr_queue, clients_all, arr_users);
+                LogoutClient(i, arr_queue, clients_all, arr_users);
+                SendHeartbeat(arr_time, i, arr_queue,clients_all,arr_users);
             }
         }
         sleep(1);
