@@ -22,7 +22,7 @@ struct User {
     long uid; //unique id - pid
     char uname[100];
     int ulog; //is user logged in: 0 - no, 1 - yes
-    int urooms[rooms_all]; //rooms to which user belongs, 1 - belongs
+    int urooms[rooms_all + 1]; //rooms to which user belongs, 1 - belongs, index from 1
 };
 
 #endif

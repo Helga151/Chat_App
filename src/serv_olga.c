@@ -300,8 +300,8 @@ void WriteUsersRooms(int current_queue, User current_user, char (*arr_rooms)[100
     Message mes;
     int receive = msgrcv(current_queue, &mes, (sizeof(mes) - sizeof(long)), 7, IPC_NOWAIT);
     if(receive > 0) {
-        printf("jestem\n");
         for(int i = 1; i <= rooms_all; i++) {
+            printf("%d. %d %s\n", i, current_user.urooms[i], arr_rooms[i]);
             if(current_user.urooms[i] == 1) { //user belongs to this room
                 printf("%s\n", arr_rooms[i]); //finds room's name
                 

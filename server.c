@@ -26,6 +26,9 @@ int main(int argc, char* argv[]) {
         arr_queue[i] = 0;
         arr_users[i].uid = 0;
         arr_users[i].ulog = 0;
+        for(int j = 1; j <= rooms_all; j++) {
+            arr_users[i].urooms[j] = 0;
+        }
         arr_time[i%clients_all]=10;
         memset(arr_users[i].uname,0,sizeof(arr_users[i].uname));
     }
@@ -45,8 +48,9 @@ int main(int argc, char* argv[]) {
                 WriteOldMessages(arr_queue[i]);
                 PrintRoomsList(arr_queue[i]);
                 PrintUsernames(arr_queue[i], arr_queue, clients_all, arr_users);
-                AddUserToRoom(arr_queue[i], arr_rooms, arr_users[i]);
-                WriteUsersRooms(arr_queue[i], arr_users[i], arr_rooms);
+                //arr_users[i + 1] - index from 1
+                AddUserToRoom(arr_queue[i], arr_rooms, arr_users[i + 1]);
+                WriteUsersRooms(arr_queue[i], arr_users[i + 1], arr_rooms);
                 LogoutClient(i, arr_queue, clients_all, arr_users);
                 SendHeartbeat(arr_time, i, arr_queue, clients_all, arr_users);
             }
