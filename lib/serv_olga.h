@@ -14,6 +14,7 @@ void WriteOldMessages(int current_queue);
 void PrintUsernames(int current_queue, int *arr_queue, int clients_all, User *arr_users);
 void PrintRoomsList(int current_queue);
 void WriteUsersRooms(int current_queue, User *current_user, char (*arr_rooms)[100]);
+void WriteAllUsersRooms(int current_queue, int *arr_queue, int clients_all, User *arr_users, char (*arr_rooms)[100]);
 void AddUserToRoom(int current_queue, char (*arr_rooms)[100], User *current_user); 
 void RemoveUserFromRoom(int current_queue, User *current_user);
 

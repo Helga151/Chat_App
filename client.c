@@ -174,12 +174,10 @@ void PrintOptions() {
     printf("4. Show all users registered to this server\n"); 
     printf("5. Show all existing rooms\n");
     printf("6. Show all rooms where this user belongs\n");
-    printf("7. Add user to a room\n");
-    printf("8. Remove user from a room\n");
-    printf("9. Exit program\n"); //usunięcie nazwy użytkownika z pliku i zamknęcie programu
-    //dodanie do struktury argumentu mówiącego o grupach w których jestem
-    /*printf("4. Wypisz uzytkownika z pokoju\n");
-    printf("7. Wyswietl liste uzytkownikow zapisanych do pokoi\n");*/ //dodatkowe pytanie: z jakich pokoi
+    printf("7. Show all users and rooms where they belong\n");
+    printf("8. Join a room\n");
+    printf("9. Leave a room\n");
+    printf("10. Exit program\n"); 
     printf("Type task number -> ");
 }
 
@@ -277,6 +275,17 @@ int main(int argc, char* argv[]) {
                 break;
             }
             case 7: {
+                mes.mtype = 7;
+                msgsnd(queue, &mes, (sizeof(mes) - sizeof(long)), 0);
+                int receive = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
+                if(receive > 0) {
+                    printf("%s\n", mes.mtext); 
+                }
+                else printf("An error has occurred!\n");
+                PrintPressKey();
+                break;
+            }
+            case 8: {
                 //print all rooms and then ask where to add the user
                 //if user enters room which doesn't exist, create new one
                 mes.mtype = 5;
@@ -286,7 +295,7 @@ int main(int argc, char* argv[]) {
                 printf("Enter room name where you want to be added:\n-> ");
                 char room[100];
                 scanf("%s", room);
-                mes.mtype = 7;
+                mes.mtype = 8;
                 strcpy(mes.mtext, room);
                 msgsnd(queue, &mes, (sizeof(mes) - sizeof(long)), 0);
                 int receive = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
@@ -308,20 +317,19 @@ int main(int argc, char* argv[]) {
                 PrintPressKey();
                 break;
             }
-            
-            case 8: {
+            case 9: {
                 ListYourRooms(queue);
                 if(mes.mid == 1) {
                     printf("This user belongs to only one room\n");
-                    printf("Removing from the room cannot be perfomed\n");
+                    printf("Leaving the room cannot be perfomed\n");
                 }
                 else {
-                    printf("Enter number of room from which user will be erased\n");
+                    printf("Enter a number of a room which you want to leave\n");
                     int room_number;
                     scanf("%d", &room_number);
                     mes.mid = (long)room_number;
                     user.urooms[room_number] = 0;
-                    mes.mtype = 8;
+                    mes.mtype = 9;
                     msgsnd(queue, &mes, (sizeof(mes) - sizeof(long)), 0);
                     int receive = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
                     if(receive > 0) {
@@ -332,8 +340,8 @@ int main(int argc, char* argv[]) {
                 PrintPressKey();
                 break;
             }
-            case 9: { 
-                mes.mtype = 9;
+            case 10: { 
+                mes.mtype = 10;
                 msgsnd(queue, &mes, (sizeof(mes) - sizeof(long)), 0);
                 int receive = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
                 if(receive > 0) {

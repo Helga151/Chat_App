@@ -96,7 +96,7 @@ void DeleteLine(User Client){
 
 void LogoutClient(int id, int* arr_queue, int clients_all, User *arr_users){
     Message mes;
-    int receive = msgrcv(arr_queue[id], &mes, (sizeof(mes) - sizeof(long)), 9, IPC_NOWAIT);
+    int receive = msgrcv(arr_queue[id], &mes, (sizeof(mes) - sizeof(long)), 10, IPC_NOWAIT);
     if(receive > 0) {
         printf("wylogowuje %s\n",arr_users[id].uname);
         DeleteLine(arr_users[id]);

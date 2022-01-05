@@ -331,9 +331,38 @@ void WriteUsersRooms(int current_queue, User *current_user, char (*arr_rooms)[10
     }
 }
 
-void AddUserToRoom(int current_queue, char (*arr_rooms)[100], User *current_user) {
+void WriteAllUsersRooms(int current_queue, int *arr_queue, int clients_all, User *arr_users, char (*arr_rooms)[100]) {
     Message mes;
     int receive = msgrcv(current_queue, &mes, (sizeof(mes) - sizeof(long)), 7, IPC_NOWAIT);
+    if(receive > 0) {
+        char text[1000], tmp[200];
+        memset(tmp, 0, 200);
+        memset(text, 0, 1000);
+        for(int i = 0; i < clients_all; i++) {
+            if(arr_queue[i] != 0) {
+                sprintf(tmp, "user %s room(s): ", arr_users[i].uname);
+                strcat(text, tmp);
+                memset(tmp, 0, 100);
+                for(int j = 1; j <= rooms_all; j++) {
+                    if(arr_users[i].urooms[j] == 1) {
+                        sprintf(tmp, "%s ", arr_rooms[j]);
+                        strcat(text, tmp);
+                        memset(tmp, 0, 200);
+                    }
+                }
+                strcat(text, "\n");
+            }
+        }
+        printf("%s", text);
+        strcpy(mes.mtext, text);
+        mes.mtype = server_type;
+        msgsnd(current_queue, &mes, (sizeof(mes) - sizeof(long)), 0);
+    }
+}
+
+void AddUserToRoom(int current_queue, char (*arr_rooms)[100], User *current_user) {
+    Message mes;
+    int receive = msgrcv(current_queue, &mes, (sizeof(mes) - sizeof(long)), 8, IPC_NOWAIT);
     if(receive > 0) {
         int tmp = CheckIfUnique(mes.mtext);
         int j = AddRoomToArray(tmp, current_user, mes.mtext, arr_rooms);
@@ -346,7 +375,7 @@ void AddUserToRoom(int current_queue, char (*arr_rooms)[100], User *current_user
 
 void RemoveUserFromRoom(int current_queue, User *current_user) {
     Message mes;
-    int receive = msgrcv(current_queue, &mes, (sizeof(mes) - sizeof(long)), 8, IPC_NOWAIT);
+    int receive = msgrcv(current_queue, &mes, (sizeof(mes) - sizeof(long)), 9, IPC_NOWAIT);
     if(receive > 0) {
         if(current_user->urooms[(int)mes.mid] == 1) {
             current_user->urooms[(int)mes.mid] = 0;
