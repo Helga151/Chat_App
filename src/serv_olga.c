@@ -87,7 +87,7 @@ void RegisterClient(int *arr_queue, int clients_all, int temp_q, User *arr_users
                 zm = 1;
                 //check if room name is unique - yes(create new room)
                 int tmp = CheckIfUnique(mes.mtext);
-                j = AddRoomToArray(tmp, arr_users[i], mes.mtext, arr_rooms);
+                j = AddRoomToArray(tmp, &arr_users[i], mes.mtext, arr_rooms);
                 AddUserToFile(arr_users[i]);
                 break;
             }
@@ -253,13 +253,13 @@ void PrintUsernames(int current_queue, int *arr_queue, int clients_all, User *ar
     }
 }
 
-int AddRoomToArray(int tmp, User current_user, char *text, char (*arr_rooms)[100]) {
+int AddRoomToArray(int tmp, User *current_user, char *text, char (*arr_rooms)[100]) {
     int j = 0, free_space = 0;
     if(tmp == 0) { //unique room name
         for(j = 1; j <= rooms_all; j++) { //find first empty slot for new room
             if(strlen(arr_rooms[j]) == 0) {
                 strcpy(arr_rooms[j], text);
-                current_user.urooms[j] = 1;
+                current_user->urooms[j] = 1;
                 printf("%d. %s\n", j, arr_rooms[j]);
                 free_space = 1;
                 break;
@@ -269,7 +269,7 @@ int AddRoomToArray(int tmp, User current_user, char *text, char (*arr_rooms)[100
     else if(tmp == 1) { //not unique and not error, assign 1 to user.uroom where room name is
         for(j = 1; j <= rooms_all; j++) { 
             if(strcmp(arr_rooms[j], text) == 0) {
-                current_user.urooms[j] = 1;
+                current_user->urooms[j] = 1;
                 printf("%d. %s\n", j, arr_rooms[j]);
                 free_space = 1;
                 break;
@@ -283,7 +283,7 @@ int AddRoomToArray(int tmp, User current_user, char *text, char (*arr_rooms)[100
     return j;
 }
 
-void AddUserToRoom(int current_queue, char (*arr_rooms)[100], User current_user) {
+void AddUserToRoom(int current_queue, char (*arr_rooms)[100], User *current_user) {
     Message mes;
     int receive = msgrcv(current_queue, &mes, (sizeof(mes) - sizeof(long)), 6, IPC_NOWAIT);
     if(receive > 0) {
@@ -296,18 +296,44 @@ void AddUserToRoom(int current_queue, char (*arr_rooms)[100], User current_user)
     }
 }
 
-void WriteUsersRooms(int current_queue, User current_user, char (*arr_rooms)[100]) {
+void WriteUsersRooms(int current_queue, User *current_user, char (*arr_rooms)[100]) {
     Message mes;
     int receive = msgrcv(current_queue, &mes, (sizeof(mes) - sizeof(long)), 7, IPC_NOWAIT);
     if(receive > 0) {
+        char text[1000], tmp[100];
+        memset(tmp, 0, 100);
+        memset(text, 0, 1000);
+        int count = 0;
         for(int i = 1; i <= rooms_all; i++) {
-            printf("%d. %d %s\n", i, current_user.urooms[i], arr_rooms[i]);
-            if(current_user.urooms[i] == 1) { //user belongs to this room
-                printf("%s\n", arr_rooms[i]); //finds room's name
-                
+            //printf("%d. %d %s\n", i, current_user->urooms[i], arr_rooms[i]);
+            if(current_user->urooms[i] == 1) { //user belongs to this room
+                //printf("%d. %s\n", i, arr_rooms[i]); //finds room's name
+                sprintf(tmp, "%i. %s\n", i, arr_rooms[i]);
+                strcat(text, tmp);
+                memset(tmp, 0, 100);
+                count++;
             }
         }
-        //mes.mtype = server_type;
-        //msgsnd(current_queue, &mes, (sizeof(mes) - sizeof(long)), 0);
+        printf("%d rooms:\n%s\n", count, text);
+        strcpy(mes.mtext, text);
+        mes.mid = (long)count;
+        mes.mtype = server_type;
+        msgsnd(current_queue, &mes, (sizeof(mes) - sizeof(long)), 0);
+    }
+}
+
+void RemoveUserFromRoom(int current_queue, User *current_user) {
+    Message mes;
+    int receive = msgrcv(current_queue, &mes, (sizeof(mes) - sizeof(long)), 8, IPC_NOWAIT);
+    if(receive > 0) {
+        if(current_user->urooms[(int)mes.mid] == 1) {
+            current_user->urooms[(int)mes.mid] = 0;
+            strcpy(mes.mtext, "Successfully removed\n");
+        }
+        else {
+            strcpy(mes.mtext, "User does not belong to this room\n");
+        }
+        mes.mtype = server_type;
+        msgsnd(current_queue, &mes, (sizeof(mes) - sizeof(long)), 0);
     }
 }

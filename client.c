@@ -174,6 +174,17 @@ void HeartBeat(int queue){
     }
 }
 
+void ListYourRooms(int queue) {
+    mes.mtype = 7;
+    msgsnd(queue, &mes, (sizeof(mes) - sizeof(long)), 0);
+    int receive = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
+    if(receive > 0) {
+        printf("Your rooms:\n");
+        printf("%s\n", mes.mtext);
+    }
+    else printf("An error has occurred!\n");
+}
+
 int main(int argc, char* argv[]) {
     printf("--CZAT by Olga Gerlich and Pawel Marczewski--\n");
     printf("Hi!\n");
@@ -294,13 +305,31 @@ int main(int argc, char* argv[]) {
                 break;
             }
             case 7: {
-                mes.mtype = 7;
-                msgsnd(queue, &mes, (sizeof(mes) - sizeof(long)), 0);
-                /*int receive = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
-                if(receive > 0) {
-                    printf("Rooms:\n");
-                
-                }*/
+                ListYourRooms(queue);
+                PrintPressKey();
+                break;
+            }
+            case 8: {
+                ListYourRooms(queue);
+                if(mes.mid == 1) {
+                    printf("This user belongs to only one room\n");
+                    printf("Removing from the room cannot be perfomed\n");
+                }
+                else {
+                    printf("Enter number of room from which user will be erased\n");
+                    int room_number;
+                    scanf("%d", &room_number);
+                    mes.mid = (long)room_number;
+                    user.urooms[room_number] = 0;
+                    mes.mtype = 8;
+                    msgsnd(queue, &mes, (sizeof(mes) - sizeof(long)), 0);
+                    int receive = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
+                    if(receive > 0) {
+                        printf("%s", mes.mtext);
+                    }
+                    else printf("An error has occurred!\n");
+                }
+                PrintPressKey();
                 break;
             }
             default: {

@@ -10,8 +10,9 @@ void WriteOldMessages(int current_queue);
 void PrintRoomsList(int current_queue);
 void AddUserToFile(User user);
 void PrintUsernames(int current_queue, int *arr_queue, int clients_all, User *arr_users);
-int AddRoomToArray(int tmp, User current_user, char *text, char (*arr_rooms)[100]);
-void AddUserToRoom(int current_queue, char (*arr_rooms)[100], User current_user); 
-void WriteUsersRooms(int current_queue, User current_user, char (*arr_rooms)[100]);
+int AddRoomToArray(int tmp, User *current_user, char *text, char (*arr_rooms)[100]);
+void AddUserToRoom(int current_queue, char (*arr_rooms)[100], User *current_user); 
+void WriteUsersRooms(int current_queue, User *current_user, char (*arr_rooms)[100]);
+void RemoveUserFromRoom(int current_queue, User *current_user);
 
 #endif
