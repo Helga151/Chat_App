@@ -52,22 +52,6 @@ void ReadUsername() { //check if written name is unique
     close(names_file); 
 }
 
-void PrintOptions() {
-    printf("---------------------------\n");
-    printf("1. Send a message\n");
-    printf("2. Show 10 last public messages from current room\n");
-    printf("3. Wyloguj uzytkownika - zamknij program\n"); //usunięcie nazwy użytkownika z pliku i zamknęcie programu
-    printf("4. Show all existing rooms\n");
-    printf("5. Show all users registered to this server\n"); 
-    printf("6. Add user to a room\n");
-    printf("7. Write rooms where user belongs\n");
-    printf("8. Remove user from a room\n");
-    //dodanie do struktury argumentu mówiącego o grupach w których jestem
-    /*printf("4. Wypisz uzytkownika z pokoju\n");
-    printf("7. Wyswietl liste uzytkownikow zapisanych do pokoi\n");*/ //dodatkowe pytanie: z jakich pokoi
-    printf("Type task number -> ");
-}
-
 void PrintPressKey() {
     printf("Press ENTER to continue\n");
     getchar(); //newline was left in the input stream, get it
@@ -80,15 +64,12 @@ void PrintPressKey() {
 void ReceiveMessage(int queue) {
     int rcv = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), msg_from_server, IPC_NOWAIT);
     if(rcv > 0) {
-        if(strcmp(mes.mto, "server") == 0){ //public message
+        if(mes.mid != 0){ //public message
             if(strcmp(mes.mfrom, user.uname) != 0) {
                 printf("New public message from %s: %s \n", mes.mfrom, mes.mtext);
                 PrintPressKey();
             }
         }
-        /*printf("Previous message was succesfully sent.\n");
-        printf("If you do not see it on other client, please continue reading printed instructions\n");
-        printf("Message will be shown after finishing current tasks\n");*/
         else { //private message
             printf("New private message from %s: %s \n", mes.mfrom, mes.mtext);
             PrintPressKey();
@@ -175,7 +156,7 @@ void HeartBeat(int queue){
 }
 
 void ListYourRooms(int queue) {
-    mes.mtype = 7;
+    mes.mtype = 6;
     msgsnd(queue, &mes, (sizeof(mes) - sizeof(long)), 0);
     int receive = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
     if(receive > 0) {
@@ -183,6 +164,23 @@ void ListYourRooms(int queue) {
         printf("%s\n", mes.mtext);
     }
     else printf("An error has occurred!\n");
+}
+
+void PrintOptions() {
+    printf("---------------------------\n");
+    printf("1. Send private message\n");
+    printf("2. Send public message\n");
+    printf("3. Show 10 last public messages from current room\n");
+    printf("4. Show all users registered to this server\n"); 
+    printf("5. Show all existing rooms\n");
+    printf("6. Show all rooms where this user belongs\n");
+    printf("7. Add user to a room\n");
+    printf("8. Remove user from a room\n");
+    printf("9. Exit program\n"); //usunięcie nazwy użytkownika z pliku i zamknęcie programu
+    //dodanie do struktury argumentu mówiącego o grupach w których jestem
+    /*printf("4. Wypisz uzytkownika z pokoju\n");
+    printf("7. Wyswietl liste uzytkownikow zapisanych do pokoi\n");*/ //dodatkowe pytanie: z jakich pokoi
+    printf("Type task number -> ");
 }
 
 int main(int argc, char* argv[]) {
@@ -200,89 +198,95 @@ int main(int argc, char* argv[]) {
         PrintOptions();
         switch (ReadNumber()) {
             case 1: { //sending message to room
-                printf("Send private (1) or public (2) message\n");
-                int type = ReadNumber();                
-                if(type == 1) {
+                printf("Whom to send?: ");
+                char recipient[100];
+                scanf("%s", recipient);
+                while(strcmp(recipient, user.uname) == 0) {
+                    printf("You can not send a message to yourself\n");
                     printf("Whom to send?: ");
-                    char recipient[100];
                     scanf("%s", recipient);
-                    while(strcmp(recipient, user.uname) == 0) {
-                        printf("You can not send a message to yourself\n");
-                        printf("Whom to send?: ");
-                        scanf("%s", recipient);
-                    }
-                    strcpy(mes.mto, recipient);
                 }
-                else if(type == 2) strcpy(mes.mto, "server");
-                else {
-                    printf("This option does not exits\n");
-                    PrintPressKey();
-                    break;
-                }
+                strcpy(mes.mto, recipient);
+
                 printf("Napisz wiadomosc: ");
                 char text[1000];
                 getchar();
                 scanf("%[^\n]s", mes.mtext);
                 mes.msec = time(NULL);
                 mes.mtype = 1;
-                mes.mid = user.uid;
+                mes.mid = 0; //to differentiate private from public message
                 strcpy(mes.mfrom, user.uname);
                 msgsnd(queue, &mes, (sizeof(mes) - sizeof(long)), 0);
-                msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), msg_from_server, 0);
-                if(strcmp(mes.mtext, "none") == 0) {
-                    printf("Written recipent does not exist\n");
+                int receive = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
+                if(receive > 0) {
+                    printf("%s", mes.mtext); 
                 }
-                else {
-                    printf("Message sent\n");
+                else printf("An error has occurred!\n");
+                PrintPressKey();
+                break;
+            }
+            case 2: {
+                mes.mtype = 4;
+                printf("Rooms where you belong:\n");
+                ListYourRooms(queue);
+                printf("Enter number of room where to sent a message?: ");
+                int room_number;
+                scanf("%d", &room_number);
+                mes.mid = (long)room_number;
+
+                printf("Write the message: ");
+                char text[1000];
+                getchar();
+                scanf("%[^\n]s", mes.mtext);
+                mes.msec = time(NULL);
+                mes.mtype = 2;
+                strcpy(mes.mfrom, user.uname);
+                msgsnd(queue, &mes, (sizeof(mes) - sizeof(long)), 0);
+                int receive = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
+                if(receive > 0) {
+                    printf("%s", mes.mtext); 
                 }
+                else printf("An error has occurred!\n");
+                PrintPressKey();
                 break;
             } 
-            case 2: { //writing 10 last messages
-                mes.mtype = 2;
+            case 3: { //writing 10 last messages
+                mes.mtype = 3;
                 printf("Last messages:\n");
                 ListingRequest(queue);
                 PrintPressKey();
                 break;
             } 
-            case 3: { //wyloguj
-                mes.mtype = 3;
-                msgsnd(queue, &mes, (sizeof(mes) - sizeof(long)), 0);
-                int receive = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
-                if(receive > 0) {
-                    printf("Wylogowano\n");
-                    printf("%s\n", mes.mtext); 
-                    return 0;
-                }
-                else printf("An error has occurred!\n");
-                PrintPressKey();
-                return 0;
-                break;
-            } 
             case 4: {
                 mes.mtype = 4;
-                printf("All rooms:\n");
-                ListingRequest(queue);
-                PrintPressKey();
-                break;
-            }
-            case 5: {
-                mes.mtype = 5;
                 printf("All users on this server:\n");
                 ListingRequest(queue);
                 PrintPressKey();
                 break;           
             }
+            case 5: {
+                mes.mtype = 5;
+                printf("All rooms:\n");
+                ListingRequest(queue);
+                PrintPressKey();
+                break;
+            }
             case 6: {
+                ListYourRooms(queue);
+                PrintPressKey();
+                break;
+            }
+            case 7: {
                 //print all rooms and then ask where to add the user
                 //if user enters room which doesn't exist, create new one
-                mes.mtype = 4;
+                mes.mtype = 5;
                 printf("Available rooms:\n");
                 ListingRequest(queue);
                 printf("You can create a new room by writing unique room name\n");
                 printf("Enter room name where you want to be added:\n-> ");
                 char room[100];
                 scanf("%s", room);
-                mes.mtype = 6;
+                mes.mtype = 7;
                 strcpy(mes.mtext, room);
                 msgsnd(queue, &mes, (sizeof(mes) - sizeof(long)), 0);
                 int receive = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
@@ -304,11 +308,7 @@ int main(int argc, char* argv[]) {
                 PrintPressKey();
                 break;
             }
-            case 7: {
-                ListYourRooms(queue);
-                PrintPressKey();
-                break;
-            }
+            
             case 8: {
                 ListYourRooms(queue);
                 if(mes.mid == 1) {
@@ -332,8 +332,22 @@ int main(int argc, char* argv[]) {
                 PrintPressKey();
                 break;
             }
+            case 9: { 
+                mes.mtype = 9;
+                msgsnd(queue, &mes, (sizeof(mes) - sizeof(long)), 0);
+                int receive = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
+                if(receive > 0) {
+                    printf("Log out successful\n");
+                    printf("%s\n", mes.mtext); 
+                    return 0;
+                }
+                else printf("An error has occurred!\n");
+                PrintPressKey();
+                return 0;
+                break;
+            } 
             default: {
-                printf("Podana opcja nie istnieje!\n");
+                printf("Entered option does not exist!\n");
             }
         }
     }

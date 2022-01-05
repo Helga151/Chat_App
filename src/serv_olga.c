@@ -5,6 +5,7 @@
 #include <sys/msg.h>
 #include <unistd.h>
 #include <errno.h>
+#include <stdlib.h>
 
 int CheckIfUnique(char *text) { //for rooms file
     int rooms_file = open("txt/rooms_file", O_RDWR | O_CREAT | O_EXCL, 0644);
@@ -70,6 +71,45 @@ void AddUserToFile(User user) {
     close(names_file);  
 }
 
+int AddRoomToArray(int tmp, User *current_user, char *text, char (*arr_rooms)[100]) {
+    int j = 0, free_space = 0;
+    if(tmp == 0) { //unique room name
+        for(j = 1; j <= rooms_all; j++) { //find first empty slot for new room
+            if(strlen(arr_rooms[j]) == 0) {
+                strcpy(arr_rooms[j], text);
+                current_user->urooms[j] = 1;
+                printf("%d. %s\n", j, arr_rooms[j]);
+                free_space = 1;
+                break;
+            }
+        }
+    }
+    else if(tmp == 1) { //not unique and not error, assign 1 to user.uroom where room name is
+        for(j = 1; j <= rooms_all; j++) { 
+            if(strcmp(arr_rooms[j], text) == 0) {
+                current_user->urooms[j] = 1;
+                printf("%d. %s\n", j, arr_rooms[j]);
+                free_space = 1;
+                break;
+            }
+        }
+    }
+    if(free_space == 0) {
+        printf("No empty room slots left\n");
+        j = 0;
+    }
+    return j;
+}
+
+char *WriteCurrentTime(time_t sec) {
+    struct tm* current_time;
+    current_time = localtime(&sec);
+
+    char *time = malloc(11);
+    sprintf(time, "%02d:%02d:%02d", current_time->tm_hour, current_time->tm_min, current_time->tm_sec);
+    return time;
+}
+
 void RegisterClient(int *arr_queue, int clients_all, int temp_q, User *arr_users, char (*arr_rooms)[100]) {
     //user has logged in
     Message mes;
@@ -102,28 +142,57 @@ void RegisterClient(int *arr_queue, int clients_all, int temp_q, User *arr_users
     }
 }
 
-void SendMessage(int current_queue, int* arr_queue, int clients_all, User *arr_users) {
+void SendPrivateMessage(int current_queue, int* arr_queue, int clients_all, User *arr_users) {
+//private - send the message to one, particular user
     Message mes;
     int receive = msgrcv(current_queue, &mes, (sizeof(mes) - sizeof(long)), 1, IPC_NOWAIT);
     if(receive > 0) {
-        //printf("%s\n", mes.mtext);
-        struct tm* current_time;
-        current_time = localtime(&mes.msec);
+        //find this user 
+        int zm = 0;
+        for(int i = 0; i < clients_all; i++) {
+            if(arr_queue[i] != 0 && arr_users[i].ulog == 1 && strcmp(arr_users[i].uname, mes.mto) == 0) {
+                mes.mtype = msg_from_server;
+                msgsnd(arr_queue[i], &mes, (sizeof(mes) - sizeof(long)), 0);
+                printf("sent\n");
+                zm = 1;
+                break;
+            }
+        }
+        if(zm == 0) {
+            //send feedback to client that written recipent does not exist
+            strcpy(mes.mtext, "Written recipent does not exist\n");
+        }
+        else strcpy(mes.mtext, "Message sent\n");
+        mes.mtype = server_type;
+        msgsnd(current_queue, &mes, (sizeof(mes) - sizeof(long)), 0);
+    }
+}
 
-        char time[10];
-        sprintf(time, "%02d:%02d:%02d", current_time->tm_hour, current_time->tm_min, current_time->tm_sec);
-        printf("%s %s\n", time, mes.mtext);
-
-        if(strcmp(mes.mto, "server") == 0) {
-        //public - send the message to every client
+void SendPublicMessage(int current_queue, int* arr_queue, int clients_all, User *arr_users, User *current_user) {
+//public - send the message to every client on entered room
+    Message mes;
+    int receive = msgrcv(current_queue, &mes, (sizeof(mes) - sizeof(long)), 2, IPC_NOWAIT);
+    if(receive > 0) {
+        mes.mtype = msg_from_server;
+        char text[100];
+        //check if sender belongs to the room which he/she entered
+        if(current_user->urooms[(int)mes.mid] == 0) {
+            sprintf(text, "You can not sent public message to room where you do not belong\n");
+        } 
+        else {
+            int count = 0;
             for(int i = 0; i < clients_all; i++) {
-                if(arr_queue[i] != 0) {
-                    mes.mtype = msg_from_server;
+                if(arr_queue[i] != 0 && arr_users[i].urooms[(int)mes.mid] == 1 && strcmp(arr_users[i].uname, mes.mfrom) != 0) {
                     msgsnd(arr_queue[i], &mes, (sizeof(mes) - sizeof(long)), 0);
-                    printf("poszlo\n");
+                    printf("sent\n");
+                    count++;
                 }
             }
-            //write the message to the chat file
+            sprintf(text, "Message sent to %d users\n", count);
+            char time[10];
+            strcpy(time, WriteCurrentTime(mes.msec));
+            printf("%s %s\n", time, mes.mtext);
+            //write the message, time and sender to the chat file
             int chat = open("txt/chat", O_WRONLY | O_CREAT | O_APPEND, S_IRWXU);
             write(chat, time, 8);
             write(chat, " user: ", 7);
@@ -133,33 +202,16 @@ void SendMessage(int current_queue, int* arr_queue, int clients_all, User *arr_u
             write(chat, "\n", 1);
             close(chat);
         }
-        else {
-            //private - send the message to one, particular user
-            //find this user 
-            int zm = 0;
-            for(int i = 0; i < clients_all; i++) {
-                if(arr_queue[i] != 0 && arr_users[i].ulog == 1 && strcmp(arr_users[i].uname, mes.mto) == 0) {
-                    mes.mtype = msg_from_server;
-                    msgsnd(arr_queue[i], &mes, (sizeof(mes) - sizeof(long)), 0);
-                    printf("poszlo\n");
-                    zm = 1;
-                    break;
-                }
-            }
-            if(zm == 0) {
-                //send feedback to client that written recipent does not exist
-                mes.mtype = msg_from_server;
-                strcpy(mes.mtext, "none");
-                printf("nie ma takiego uzytkownika\n");
-            }
-            msgsnd(current_queue, &mes, (sizeof(mes) - sizeof(long)), 0);
-        }
+        printf("%s", text);
+        strcpy(mes.mtext, text);
+        mes.mtype = server_type;
+        msgsnd(current_queue, &mes, (sizeof(mes) - sizeof(long)), 0);
     }
 }
 
 void WriteOldMessages(int current_queue) {
     Message mes;
-    int receive = msgrcv(current_queue, &mes, (sizeof(mes) - sizeof(long)), 2, IPC_NOWAIT);
+    int receive = msgrcv(current_queue, &mes, (sizeof(mes) - sizeof(long)), 3, IPC_NOWAIT);
     if(receive > 0) {
         printf("10 wiadomosci\n");
         char letter;
@@ -196,9 +248,29 @@ void WriteOldMessages(int current_queue) {
     }
 }
 
-void PrintRoomsList(int current_queue) {
+void PrintUsernames(int current_queue, int *arr_queue, int clients_all, User *arr_users) {
     Message mes;
     int receive = msgrcv(current_queue, &mes, (sizeof(mes) - sizeof(long)), 4, IPC_NOWAIT);
+    if(receive > 0) {
+        char arr[1000], tmp[1000];
+        memset(arr, 0, 1000);
+        memset(tmp, 0, 1000);
+        for(int i = 0; i < clients_all; i++) {
+            if(strlen(arr_users[i].uname) > 0) { 
+                sprintf(tmp, "%d. %s\n", i + 1, arr_users[i].uname);
+                strcat(arr, tmp);
+            }
+        }
+        printf("%s\n", arr);  
+        mes.mtype = server_type;
+        strcpy(mes.mtext, arr);
+        msgsnd(current_queue, &mes, (sizeof(mes) - sizeof(long)), 0);
+    }
+}
+
+void PrintRoomsList(int current_queue) {
+    Message mes;
+    int receive = msgrcv(current_queue, &mes, (sizeof(mes) - sizeof(long)), 5, IPC_NOWAIT);
     if(receive > 0) {
         int rooms_file = open("txt/rooms_file", O_RDONLY, 0644);
         if(rooms_file < 0) {
@@ -233,72 +305,9 @@ void PrintRoomsList(int current_queue) {
     }
 }
 
-void PrintUsernames(int current_queue, int *arr_queue, int clients_all, User *arr_users) {
-    Message mes;
-    int receive = msgrcv(current_queue, &mes, (sizeof(mes) - sizeof(long)), 5, IPC_NOWAIT);
-    if(receive > 0) {
-        char arr[1000], tmp[1000];
-        memset(arr, 0, 1000);
-        memset(tmp, 0, 1000);
-        for(int i = 0; i < clients_all; i++) {
-            if(strlen(arr_users[i].uname) > 0) { 
-                sprintf(tmp, "%d. %s\n", i + 1, arr_users[i].uname);
-                strcat(arr, tmp);
-            }
-        }
-        printf("%s\n", arr);  
-        mes.mtype = server_type;
-        strcpy(mes.mtext, arr);
-        msgsnd(current_queue, &mes, (sizeof(mes) - sizeof(long)), 0);
-    }
-}
-
-int AddRoomToArray(int tmp, User *current_user, char *text, char (*arr_rooms)[100]) {
-    int j = 0, free_space = 0;
-    if(tmp == 0) { //unique room name
-        for(j = 1; j <= rooms_all; j++) { //find first empty slot for new room
-            if(strlen(arr_rooms[j]) == 0) {
-                strcpy(arr_rooms[j], text);
-                current_user->urooms[j] = 1;
-                printf("%d. %s\n", j, arr_rooms[j]);
-                free_space = 1;
-                break;
-            }
-        }
-    }
-    else if(tmp == 1) { //not unique and not error, assign 1 to user.uroom where room name is
-        for(j = 1; j <= rooms_all; j++) { 
-            if(strcmp(arr_rooms[j], text) == 0) {
-                current_user->urooms[j] = 1;
-                printf("%d. %s\n", j, arr_rooms[j]);
-                free_space = 1;
-                break;
-            }
-        }
-    }
-    if(free_space == 0) {
-        printf("No empty room slots left\n");
-        j = 0;
-    }
-    return j;
-}
-
-void AddUserToRoom(int current_queue, char (*arr_rooms)[100], User *current_user) {
-    Message mes;
-    int receive = msgrcv(current_queue, &mes, (sizeof(mes) - sizeof(long)), 6, IPC_NOWAIT);
-    if(receive > 0) {
-        int tmp = CheckIfUnique(mes.mtext);
-        int j = AddRoomToArray(tmp, current_user, mes.mtext, arr_rooms);
-        printf("%d\n", j);
-        mes.mtype = server_type;
-        mes.mid = (long)j; //j is an index where is the room written by user
-        msgsnd(current_queue, &mes, (sizeof(mes) - sizeof(long)), 0);
-    }
-}
-
 void WriteUsersRooms(int current_queue, User *current_user, char (*arr_rooms)[100]) {
     Message mes;
-    int receive = msgrcv(current_queue, &mes, (sizeof(mes) - sizeof(long)), 7, IPC_NOWAIT);
+    int receive = msgrcv(current_queue, &mes, (sizeof(mes) - sizeof(long)), 6, IPC_NOWAIT);
     if(receive > 0) {
         char text[1000], tmp[100];
         memset(tmp, 0, 100);
@@ -318,6 +327,19 @@ void WriteUsersRooms(int current_queue, User *current_user, char (*arr_rooms)[10
         strcpy(mes.mtext, text);
         mes.mid = (long)count;
         mes.mtype = server_type;
+        msgsnd(current_queue, &mes, (sizeof(mes) - sizeof(long)), 0);
+    }
+}
+
+void AddUserToRoom(int current_queue, char (*arr_rooms)[100], User *current_user) {
+    Message mes;
+    int receive = msgrcv(current_queue, &mes, (sizeof(mes) - sizeof(long)), 7, IPC_NOWAIT);
+    if(receive > 0) {
+        int tmp = CheckIfUnique(mes.mtext);
+        int j = AddRoomToArray(tmp, current_user, mes.mtext, arr_rooms);
+        printf("%d\n", j);
+        mes.mtype = server_type;
+        mes.mid = (long)j; //j is an index where is the room written by user
         msgsnd(current_queue, &mes, (sizeof(mes) - sizeof(long)), 0);
     }
 }

@@ -44,12 +44,13 @@ int main(int argc, char* argv[]) {
         for(int i = 0; i < clients_all; i++) {
             if(arr_queue[i] != 0) { //look for a not empty queue
                 arr_time[i]--;
-                SendMessage(arr_queue[i], arr_queue, clients_all, arr_users);
+                SendPrivateMessage(arr_queue[i], arr_queue, clients_all, arr_users);
+                SendPublicMessage(arr_queue[i], arr_queue, clients_all, arr_users, &arr_users[i]);
                 WriteOldMessages(arr_queue[i]);
-                PrintRoomsList(arr_queue[i]);
                 PrintUsernames(arr_queue[i], arr_queue, clients_all, arr_users);
-                AddUserToRoom(arr_queue[i], arr_rooms, &arr_users[i]);
+                PrintRoomsList(arr_queue[i]);
                 WriteUsersRooms(arr_queue[i], &arr_users[i], arr_rooms);
+                AddUserToRoom(arr_queue[i], arr_rooms, &arr_users[i]);
                 RemoveUserFromRoom(arr_queue[i], &arr_users[i]);
                 LogoutClient(i, arr_queue, clients_all, arr_users);
                 SendHeartbeat(arr_time, i, arr_queue, clients_all, arr_users);
