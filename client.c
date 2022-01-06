@@ -15,6 +15,23 @@
 Message mes;
 User user;
 
+void PrintPressKey() {
+    printf("Press ENTER to continue\n");
+    getchar(); //newline was left in the input stream, get it
+    char enter = 0;
+    while (enter != '\r' && enter != '\n') { 
+        enter = getchar(); 
+    }
+}
+
+int ReadNumber() {
+    int choice;      
+    while (scanf("%d", &choice) != 1) {
+        scanf("%*s");
+    }
+    return choice;
+}
+
 void ReadUsername() { //check if written name is unique
     int unique = 1; //0 - unique
     int names_file = open("txt/names_file", O_RDONLY | O_CREAT, 0644);
@@ -52,27 +69,16 @@ void ReadUsername() { //check if written name is unique
     close(names_file); 
 }
 
-void PrintPressKey() {
-    printf("Press ENTER to continue\n");
-    getchar(); //newline was left in the input stream, get it
-    char enter = 0;
-    while (enter != '\r' && enter != '\n') { 
-        enter = getchar(); 
-    }
-}
-
 void ReceiveMessage(int queue) {
     int rcv = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), msg_from_server, IPC_NOWAIT);
     if(rcv > 0) {
         if(mes.mid != 0){ //public message
             if(strcmp(mes.mfrom, user.uname) != 0) {
                 printf("New public message from %s: %s \n", mes.mfrom, mes.mtext);
-                PrintPressKey();
             }
         }
         else { //private message
             printf("New private message from %s: %s \n", mes.mfrom, mes.mtext);
-            PrintPressKey();
         }
     }
 }
@@ -82,6 +88,17 @@ void ListingRequest(int queue) {
     int receive = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
     if(receive > 0) {
         printf("%s\n", mes.mtext); 
+    }
+    else printf("An error has occurred!\n");
+}
+
+void ListYourRooms(int queue) {
+    mes.mtype = 6;
+    msgsnd(queue, &mes, (sizeof(mes) - sizeof(long)), 0);
+    int receive = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
+    if(receive > 0) {
+        printf("Your rooms:\n");
+        printf("%s\n", mes.mtext);
     }
     else printf("An error has occurred!\n");
 }
@@ -138,13 +155,6 @@ int Register() {
     //printf("%d\n", queue);
 }
 
-int ReadNumber() {
-    int choice;      
-    while (scanf("%d", &choice) != 1) {
-        scanf("%*s");
-    }
-    return choice;
-}
 void HeartBeat(int queue){
     while (1){
         if (msgrcv(queue,&mes,(sizeof(mes) - sizeof(long)),11,0)>0){
@@ -153,17 +163,6 @@ void HeartBeat(int queue){
             msgsnd(queue,&mes,(sizeof(mes) - sizeof(long)), 0);
         }
     }
-}
-
-void ListYourRooms(int queue) {
-    mes.mtype = 6;
-    msgsnd(queue, &mes, (sizeof(mes) - sizeof(long)), 0);
-    int receive = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
-    if(receive > 0) {
-        printf("Your rooms:\n");
-        printf("%s\n", mes.mtext);
-    }
-    else printf("An error has occurred!\n");
 }
 
 void PrintOptions() {
@@ -228,10 +227,7 @@ int main(int argc, char* argv[]) {
                 printf("Rooms where you belong:\n");
                 ListYourRooms(queue);
                 printf("Enter number of a room where to sent a message: ");
-                int room_number;
-                scanf("%d", &room_number);
-                mes.mid = (long)room_number;
-
+                mes.mid = (long)ReadNumber();
                 printf("Write the message: ");
                 char text[1000];
                 getchar();
@@ -253,9 +249,7 @@ int main(int argc, char* argv[]) {
                 printf("Rooms where you belong:\n");
                 ListYourRooms(queue);
                 printf("Enter number of a room from which you would like to read messages: ");
-                int room_number;
-                scanf("%d", &room_number);
-                mes.mid = (long)room_number;
+                mes.mid = (long)ReadNumber();
                 mes.mtype = 3;
                 msgsnd(queue, &mes, (sizeof(mes) - sizeof(long)), 0);
                 int receive = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
@@ -336,8 +330,7 @@ int main(int argc, char* argv[]) {
                 }
                 else {
                     printf("Enter a number of a room which you want to leave\n");
-                    int room_number;
-                    scanf("%d", &room_number);
+                    int room_number = ReadNumber();
                     mes.mid = (long)room_number;
                     user.urooms[room_number] = 0;
                     mes.mtype = 9;
