@@ -20,7 +20,7 @@ int CheckIfUnique(char *text) { //for rooms file
         }
     }
     else { //file didn't exist 
-        printf("File didn't existed\n");
+        printf("File didn't exist\n");
     }
     int unique = 0; //0 - unique
     char letter;
@@ -133,7 +133,7 @@ void RegisterClient(int *arr_queue, int clients_all, int temp_q, User *arr_users
             }
         }
         if(zm == 0) { //to many clients
-            printf("Nie ma wolnych miejsc\n");
+            printf("No empty slots for clients left\n");
             strcpy(mes.mtext, "failed");
         }
         mes.mtype = server_type;
@@ -192,8 +192,10 @@ void SendPublicMessage(int current_queue, int* arr_queue, int clients_all, User 
             char time[10];
             strcpy(time, WriteCurrentTime(mes.msec));
             printf("%s %s\n", time, mes.mtext);
+            char file[10];
+            sprintf(file, "txt/%ld", mes.mid);
             //write the message, time and sender to the chat file
-            int chat = open("txt/chat", O_WRONLY | O_CREAT | O_APPEND, S_IRWXU);
+            int chat = open(file, O_WRONLY | O_CREAT | O_APPEND, 0644);
             write(chat, time, 8);
             write(chat, " user: ", 7);
             write(chat, &mes.mfrom, strlen(mes.mfrom));
@@ -209,38 +211,50 @@ void SendPublicMessage(int current_queue, int* arr_queue, int clients_all, User 
     }
 }
 
-void WriteOldMessages(int current_queue) {
+void WriteOldMessages(int current_queue, User *current_user) {
     Message mes;
     int receive = msgrcv(current_queue, &mes, (sizeof(mes) - sizeof(long)), 3, IPC_NOWAIT);
     if(receive > 0) {
-        printf("10 wiadomosci\n");
-        char letter;
+        //check if sender belongs to the room which he/she entered
         char arr[1000];
-        int j = 0;
-        int chat = open("txt/chat", O_RDONLY | O_CREAT | O_APPEND, S_IRWXU);
-        while (read(chat, &letter, 1) > 0)
-        {
-            arr[j] = letter;
-            j++;
+        if(current_user->urooms[(int)mes.mid] == 0) {
+            sprintf(arr, "You can not read messages from the room where you do not belong\n");
         }
-        close(chat);
-        int nl = 10, k = 0; //write 10 last lines
-        char lines[1000];
-        while(j-- && nl > 0) {
-            if(arr[j] == '\n') {
-                nl--;
+        else {
+            char letter;
+            int j = 0;
+            char file[10];
+            sprintf(file, "txt/%ld", mes.mid);
+            int chat = open(file, O_RDONLY | O_CREAT, 0644);
+            if(chat < 0) { //or error occured
+                printf("Could not open the file\n");
+                return;
             }
-            lines[k] = arr[j];
-            k++;
-        }
-        memset(arr, 0, 1000);
-        int i = 0;
-        for(j = k - 1; j >= 0; j--) {
-            //printf("%c", lines[j]);
-            arr[i] = lines[j];
-            i++;
-        }
-        //printf("\n");
+            while (read(chat, &letter, 1) > 0)
+            {
+                arr[j] = letter;
+                j++;
+            }
+            close(chat);
+            int nl = 10, k = 0; //write 10 last lines
+            char lines[1000];
+            while(j-- && nl > 0) {
+                if(arr[j] == '\n') {
+                    nl--;
+                }
+                lines[k] = arr[j];
+                k++;
+            }
+            memset(arr, 0, 1000);
+            int i = 0;
+            for(j = k - 1; j >= 0; j--) {
+                arr[i] = lines[j];
+                i++;
+            }
+            if(nl == 10) { //no messages was sent to this room
+                strcpy(arr, "No messages\n");
+            }
+        } 
         printf("%s\n", arr);
         strcpy(mes.mtext, arr);
         mes.mtype = server_type;

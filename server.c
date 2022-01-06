@@ -12,6 +12,11 @@ void CloseProgram() {
     unlink("txt/rooms_file");
     unlink("txt/chat");
     unlink("txt/names_file");
+    for(int i = 1; i <= rooms_all; i++) {
+        char file[10];
+        sprintf(file, "txt/%d", i);
+        unlink(file);
+    }
     printf("\nBye\n");
     exit(0);
 }
@@ -46,7 +51,7 @@ int main(int argc, char* argv[]) {
                 arr_time[i]--;
                 SendPrivateMessage(arr_queue[i], arr_queue, clients_all, arr_users);
                 SendPublicMessage(arr_queue[i], arr_queue, clients_all, arr_users, &arr_users[i]);
-                WriteOldMessages(arr_queue[i]);
+                WriteOldMessages(arr_queue[i], &arr_users[i]);
                 PrintUsernames(arr_queue[i], arr_queue, clients_all, arr_users);
                 PrintRoomsList(arr_queue[i]);
                 WriteUsersRooms(arr_queue[i], &arr_users[i], arr_rooms);

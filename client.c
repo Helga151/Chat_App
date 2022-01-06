@@ -206,7 +206,7 @@ int main(int argc, char* argv[]) {
                 }
                 strcpy(mes.mto, recipient);
 
-                printf("Napisz wiadomosc: ");
+                printf("Write the message: ");
                 char text[1000];
                 getchar();
                 scanf("%[^\n]s", mes.mtext);
@@ -227,7 +227,7 @@ int main(int argc, char* argv[]) {
                 mes.mtype = 4;
                 printf("Rooms where you belong:\n");
                 ListYourRooms(queue);
-                printf("Enter number of room where to sent a message?: ");
+                printf("Enter number of a room where to sent a message: ");
                 int room_number;
                 scanf("%d", &room_number);
                 mes.mid = (long)room_number;
@@ -249,9 +249,20 @@ int main(int argc, char* argv[]) {
                 break;
             } 
             case 3: { //writing 10 last messages
+                mes.mtype = 4;
+                printf("Rooms where you belong:\n");
+                ListYourRooms(queue);
+                printf("Enter number of a room from which you would like to read messages: ");
+                int room_number;
+                scanf("%d", &room_number);
+                mes.mid = (long)room_number;
                 mes.mtype = 3;
-                printf("Last messages:\n");
-                ListingRequest(queue);
+                msgsnd(queue, &mes, (sizeof(mes) - sizeof(long)), 0);
+                int receive = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
+                if(receive > 0) {
+                    printf("%s", mes.mtext); 
+                }
+                else printf("An error has occurred!\n");
                 PrintPressKey();
                 break;
             } 
