@@ -142,25 +142,35 @@ void RegisterClient(int *arr_queue, int clients_all, int temp_q, User *arr_users
     }
 }
 
-void SendPrivateMessage(int current_queue, int* arr_queue, int clients_all, User *arr_users) {
+void SendPrivateMessage(int current_queue, int* arr_queue, int clients_all, User *arr_users, User *current_user) {
 //private - send the message to one, particular user
     Message mes;
     int receive = msgrcv(current_queue, &mes, (sizeof(mes) - sizeof(long)), 1, IPC_NOWAIT);
     if(receive > 0) {
         //find this user 
-        int zm = 0;
+        int exists = 0;
+        int same_room = 0;
         for(int i = 0; i < clients_all; i++) {
             if(arr_queue[i] != 0 && arr_users[i].ulog == 1 && strcmp(arr_users[i].uname, mes.mto) == 0) {
-                mes.mtype = msg_from_server;
-                msgsnd(arr_queue[i], &mes, (sizeof(mes) - sizeof(long)), 0);
-                printf("sent\n");
-                zm = 1;
-                break;
+                exists = 1;
+                for(int j = 1; j <= rooms_all; j++) { //recipent and sender are in the same room, don't care which one 
+                    if(arr_users[i].urooms[j] == 1 && current_user->urooms[j] == 1) {
+                        mes.mtype = msg_from_server;
+                        msgsnd(arr_queue[i], &mes, (sizeof(mes) - sizeof(long)), 0);
+                        printf("sent\n");
+                        same_room = 1;
+                        break;
+                    }
+                }
+                if(exists == 1) break;
             }
         }
-        if(zm == 0) {
+        if(exists == 0) {
             //send feedback to client that written recipent does not exist
             strcpy(mes.mtext, "Written recipent does not exist\n");
+        }
+        else if(same_room == 0 && exists == 1) {
+            strcpy(mes.mtext, "No common rooms with you and the recipent\n");
         }
         else strcpy(mes.mtext, "Message sent\n");
         mes.mtype = server_type;

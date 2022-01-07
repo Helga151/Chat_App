@@ -49,7 +49,7 @@ int main(int argc, char* argv[]) {
         for(int i = 0; i < clients_all; i++) {
             if(arr_queue[i] != 0) { //look for a not empty queue
                 arr_time[i]--;
-                SendPrivateMessage(arr_queue[i], arr_queue, clients_all, arr_users);
+                SendPrivateMessage(arr_queue[i], arr_queue, clients_all, arr_users, &arr_users[i]);
                 SendPublicMessage(arr_queue[i], arr_queue, clients_all, arr_users, &arr_users[i]);
                 WriteOldMessages(arr_queue[i], &arr_users[i]);
                 PrintUsernames(arr_queue[i], arr_queue, clients_all, arr_users);
