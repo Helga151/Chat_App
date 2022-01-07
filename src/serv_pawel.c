@@ -19,6 +19,10 @@ void DeleteFromQueue(int *arr_queue, int clients_all, int id, User *arr_users){
         arr_queue[i]=arr_queue[i+1];
         arr_users[i].uid=arr_users[i+1].uid;
         arr_users[i].ulog=arr_users[i+1].ulog;
+	for (int j=0;j<rooms_all+1;j++)
+        {
+        	arr_users[i].urooms[j]=arr_users[i+1].urooms[j];
+        }
         strcpy(arr_users[i].uname,arr_users[i+1].uname);
     }
     ShowQueue(clients_all,arr_users);
