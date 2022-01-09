@@ -70,8 +70,7 @@ void ReadUsername() { //check if written name is unique
 }
 
 void ReceiveMessage(int queue) {
-    int rcv = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), msg_from_server, IPC_NOWAIT);
-    if(rcv > 0) {
+    while(msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), msg_from_server, IPC_NOWAIT) > 0) {
         if(mes.mid != 0){ //public message
             if(strcmp(mes.mfrom, user.uname) != 0) {
                 printf("New public message from %s: %s \n", mes.mfrom, mes.mtext);
