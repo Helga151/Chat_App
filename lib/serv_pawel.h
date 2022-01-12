@@ -9,6 +9,7 @@ int CountClientsInFile();
 void DeleteLine(User Client);
 void LogoutClient(int id, int* arr_queue, int clients_all, User *arr_users);
 void SendHeartbeat(int* arr_time,int id, int* arr_queue,int clients_all, User *arr_users);
+void InformAbautLogout(int id,char name[100], int* arr_queue, int clients_all, User *arr_users);
 
 
 #endif

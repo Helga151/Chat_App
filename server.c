@@ -51,11 +51,13 @@ int main(int argc, char* argv[]) {
                 arr_time[i]--;
                 SendPrivateMessage(arr_queue[i], arr_queue, clients_all, arr_users, &arr_users[i]);
                 SendPublicMessage(arr_queue[i], arr_queue, clients_all, arr_users, &arr_users[i]);
+                
                 WriteOldMessages(arr_queue[i], &arr_users[i]);
                 PrintUsernames(arr_queue[i], arr_queue, clients_all, arr_users);
                 PrintRoomsList(arr_queue[i]);
                 WriteUsersRooms(arr_queue[i], &arr_users[i], arr_rooms);
                 WriteAllUsersRooms(arr_queue[i], arr_queue, clients_all, arr_users, arr_rooms);
+                
                 AddUserToRoom(arr_queue[i], arr_rooms, &arr_users[i]);
                 RemoveUserFromRoom(arr_queue[i], &arr_users[i]);
                 LogoutClient(i, arr_queue, clients_all, arr_users);

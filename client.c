@@ -14,6 +14,7 @@
 
 Message mes;
 User user;
+int childpid;
 
 void PrintPressKey() {
     printf("Press ENTER to continue\n");
@@ -82,10 +83,9 @@ void ReceiveMessage(int queue) {
     }
 }
 
-void ListingRequest(int queue) {
+void ListingRequest(int queue) {//list all depending on mtype 4 - clients; 5- rooms
     msgsnd(queue, &mes, (sizeof(mes) - sizeof(long)), 0);
-    int receive = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
-    if(receive > 0) {
+    if(msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0) > 0) {
         printf("%s\n", mes.mtext); 
     }
     else printf("An error has occurred!\n");
@@ -94,8 +94,7 @@ void ListingRequest(int queue) {
 void ListYourRooms(int queue) {
     mes.mtype = 6;
     msgsnd(queue, &mes, (sizeof(mes) - sizeof(long)), 0);
-    int receive = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
-    if(receive > 0) {
+    if(msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0) > 0) {
         printf("Your rooms:\n");
         printf("%s\n", mes.mtext);
     }
@@ -105,36 +104,14 @@ void ListYourRooms(int queue) {
 int Register() {
     int temp_q = msgget(12345678, 0644 | IPC_CREAT); //create temporary queue to send id to the server, typ logowania - 20
     ReadUsername();
-    //nwm czm to nie działa, ale czasami daje Segmentation fault (core dumped)
-    /*mes.mtype = 4;
-    msgsnd(temp_q, &mes, (sizeof(mes) - sizeof(long)), 0);
-    int receive = msgrcv(temp_q, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
-    if(receive > 0) {
-        if(strcmp(mes.mtext, "nofile") == 0) {
-            printf("No created rooms yet\n");
-            printf("Enter room name where you want to belong\n-> ");
-        }
-        else {
-            printf("Available rooms:\n");
-            printf("%s\n", mes.mtext); 
-            printf("Choose a room from above or create a new one\n-> ");
-        }
-    }
-    else {
-        printf("An error has occurred!\n");
-        return 0;
-    }*/
     printf("Enter room name where you want to belong\n-> ");
-    char room_name[100];
-    scanf("%s", room_name);
+    scanf("%s", mes.mtext);
     
     mes.mtype = 20;
     strcpy(mes.mfrom, user.uname);
     mes.mid = user.uid;
-    strcpy(mes.mtext, room_name);
     msgsnd(temp_q, &mes, (sizeof(mes) - sizeof(long)), 0);
-    int receive = msgrcv(temp_q, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
-    if(receive > 0) {
+    if(msgrcv(temp_q, &mes, (sizeof(mes) - sizeof(long)), server_type, 0) > 0) {
         if(strcmp(mes.mtext, "failed") == 0) {
             printf("No empty slots left!\n");
             printf("App is closing\n");
@@ -155,13 +132,22 @@ int Register() {
 }
 
 void HeartBeat(int queue){
-    while (1){
-        if (msgrcv(queue,&mes,(sizeof(mes) - sizeof(long)),11,0)>0){
+    int t=3;
+    while (t){
+        if(msgrcv(queue,&mes,(sizeof(mes) - sizeof(long)),11,IPC_NOWAIT)>0){
             mes.mtype=12;
-            strcpy(mes.mtext,"Beat");
+            //printf("%s\n",mes.mtext);
+            //strcpy(mes.mtext,"Beat");
             msgsnd(queue,&mes,(sizeof(mes) - sizeof(long)), 0);
+            t=3;
         }
+        else 
+            t--;
+        sleep(1);
     }
+    printf("\n");
+    printf("Server is down\n");
+    kill(getppid(),SIGTERM);
 }
 
 void PrintOptions() {
@@ -184,9 +170,11 @@ int main(int argc, char* argv[]) {
     printf("Hi!\n");
     user.ulog = 0;
     int queue = Register();
+    childpid=fork();
     if(queue == 0) return 0;
-    else if(fork()==0){
+    else if(childpid==0){
         HeartBeat(queue);
+        return 0;
     }
     PrintPressKey();
     while(1) {
@@ -222,7 +210,6 @@ int main(int argc, char* argv[]) {
                 break;
             }
             case 2: {
-                mes.mtype = 4;
                 printf("Rooms where you belong:\n");
                 ListYourRooms(queue);
                 printf("Enter number of a room where to sent a message: ");
@@ -244,7 +231,6 @@ int main(int argc, char* argv[]) {
                 break;
             } 
             case 3: { //writing 10 last messages
-                mes.mtype = 4;
                 printf("Rooms where you belong:\n");
                 ListYourRooms(queue);
                 printf("Enter number of a room from which you would like to read messages: ");
@@ -350,6 +336,7 @@ int main(int argc, char* argv[]) {
                 if(receive > 0) {
                     printf("Log out successful\n");
                     printf("%s\n", mes.mtext); 
+                    kill(childpid,SIGTERM);
                     return 0;
                 }
                 else printf("An error has occurred!\n");

@@ -97,18 +97,35 @@ void DeleteLine(User Client){
     }
     close(fd);
 }
-
-void LogoutClient(int id, int* arr_queue, int clients_all, User *arr_users){
+void InformAbautLogout(int id,char name[100], int* arr_queue, int clients_all, User *arr_users)
+{
     Message mes;
+    sprintf(mes.mtext,"User %s has left the server\n",name);
+    strcpy(mes.mfrom,"Server");
+    mes.mtype = msg_from_server;
+    for(int i = 0; i < clients_all; i++) {
+        if(arr_queue[i] != 0 && id != i) {
+            msgsnd(arr_queue[i], &mes, (sizeof(mes) - sizeof(long)), 0);                   
+        }
+    }
+}
+
+void LogoutClient(int id, int* arr_queue, int clients_all, User *arr_users)
+{
+    Message mes;
+    char name[100];
     int receive = msgrcv(arr_queue[id], &mes, (sizeof(mes) - sizeof(long)), 10, IPC_NOWAIT);
     if(receive > 0) {
         printf("wylogowuje %s\n",arr_users[id].uname);
+        strcpy(name,arr_users[id].uname);
         DeleteLine(arr_users[id]);
         mes.mtype=100; 
         strcpy(mes.mtext,"Goodbye!!!\n");
         msgsnd(arr_queue[id], &mes, (sizeof(mes) - sizeof(long)), 0);
         DeleteFromQueue(arr_queue,clients_all,id,arr_users);
         printf("done\n");
+        InformAbautLogout(id, name, arr_queue, clients_all, arr_users);
+
     }
     //else printf("An error has occurred!\n");
 }
@@ -116,16 +133,20 @@ void LogoutClient(int id, int* arr_queue, int clients_all, User *arr_users){
 void SendHeartbeat(int* arr_time,int id, int* arr_queue,int clients_all, User *arr_users){
     Message mes;
     mes.mtype=11;
-    strcpy(mes.mtext,"Heart");
+    //strcpy(mes.mtext,"Heart");
     msgsnd(arr_queue[id], &mes, (sizeof(mes) - sizeof(long)), 0);
     if (msgrcv(arr_queue[id], &mes, (sizeof(mes) - sizeof(long)), 12, IPC_NOWAIT)>0){
+        //printf("%s\n",mes.mtext);
         arr_time[id]=5;
     }
     else if(arr_time[id]<0){
+        char name[100];
         printf("wylogowuje %s\n",arr_users[id].uname);
+        strcpy(name,arr_users[id].uname);
         DeleteLine(arr_users[id]);
         DeleteFromQueue(arr_queue,clients_all,id,arr_users);
         printf("done\n");
+        InformAbautLogout(id, name, arr_queue, clients_all, arr_users);
         arr_time[id]=5;
     }
 }
