@@ -134,7 +134,11 @@ int Register() {
 void HeartBeat(int queue){
     int t=3;
     while (t){
-        if(msgrcv(queue,&mes,(sizeof(mes) - sizeof(long)),11,IPC_NOWAIT)>0){
+        int received=0;
+        while (msgrcv(queue,&mes,(sizeof(mes) - sizeof(long)),11,IPC_NOWAIT)>0){
+            received=1;
+        }
+        if(received){
             mes.mtype=12;
             //printf("%s\n",mes.mtext);
             //strcpy(mes.mtext,"Beat");
