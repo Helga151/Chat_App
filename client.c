@@ -318,6 +318,7 @@ int main(int argc, char* argv[]) {
                     printf("Leaving the room cannot be perfomed\n");
                 }
                 else {
+                    ReceiveMessage(queue);
                     printf("Enter a number of a room which you want to leave\n");
                     int room_number = ReadNumber();
                     mes.mid = (long)room_number;
@@ -334,6 +335,7 @@ int main(int argc, char* argv[]) {
                 break;
             }
             case 10: { 
+                ReceiveMessage(queue);
                 mes.mtype = 10;
                 msgsnd(queue, &mes, (sizeof(mes) - sizeof(long)), 0);
                 int receive = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
