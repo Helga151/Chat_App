@@ -150,6 +150,7 @@ void HeartBeat(int queue){
         sleep(1);
     }
     printf("\n");
+    ReceiveMessage(queue);
     printf("Server is down\n");
     kill(getppid(),SIGTERM);
 }
