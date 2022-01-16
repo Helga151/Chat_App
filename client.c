@@ -134,7 +134,11 @@ int Register() {
 void HeartBeat(int queue){
     int t=3;
     while (t){
-        if(msgrcv(queue,&mes,(sizeof(mes) - sizeof(long)),11,IPC_NOWAIT)>0){
+        int received=0;
+        while (msgrcv(queue,&mes,(sizeof(mes) - sizeof(long)),11,IPC_NOWAIT)>0){
+            received=1;
+        }
+        if(received){
             mes.mtype=12;
             //printf("%s\n",mes.mtext);
             //strcpy(mes.mtext,"Beat");
@@ -146,6 +150,7 @@ void HeartBeat(int queue){
         sleep(1);
     }
     printf("\n");
+    ReceiveMessage(queue);
     printf("Server is down\n");
     kill(getppid(),SIGTERM);
 }
@@ -314,6 +319,7 @@ int main(int argc, char* argv[]) {
                     printf("Leaving the room cannot be perfomed\n");
                 }
                 else {
+                    ReceiveMessage(queue);
                     printf("Enter a number of a room which you want to leave\n");
                     int room_number = ReadNumber();
                     mes.mid = (long)room_number;
@@ -330,6 +336,7 @@ int main(int argc, char* argv[]) {
                 break;
             }
             case 10: { 
+                ReceiveMessage(queue);
                 mes.mtype = 10;
                 msgsnd(queue, &mes, (sizeof(mes) - sizeof(long)), 0);
                 int receive = msgrcv(queue, &mes, (sizeof(mes) - sizeof(long)), server_type, 0);
